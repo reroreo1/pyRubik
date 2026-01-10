@@ -1,3 +1,4 @@
+from twophase_solver import solve_state, is_twophase_available
 from collections import deque
 from pygame.locals import *
 from OpenGL.GLU import *
@@ -7,7 +8,6 @@ import numpy as np
 import pygame
 import random
 import math
-import copy
 import os
 
 # Color definitions (RGB)
@@ -25,324 +25,6 @@ COLORS = {
 FACE_MOVES = ['F', 'B', 'U', 'D', 'L', 'R']
 MOVE_MODIFIERS = ['', "'", '2']
 
-class VirtualCube:
-    """Virtual cube for state tracking and move simulation"""
-    def __init__(self):
-        # Standard color scheme based on typical cube orientation
-        # U=White(top), D=Yellow(bottom), F=Green(front), B=Blue(back), R=Red(right), L=Orange(left)
-        self.faces = {
-            'U': [['W']*3 for _ in range(3)],
-            'D': [['Y']*3 for _ in range(3)],
-            'F': [['G']*3 for _ in range(3)],
-            'B': [['B']*3 for _ in range(3)],
-            'R': [['R']*3 for _ in range(3)],
-            'L': [['O']*3 for _ in range(3)]
-        }
-    
-    def copy(self):
-        new_cube = VirtualCube()
-        new_cube.faces = copy.deepcopy(self.faces)
-        return new_cube
-    
-    def rotate_face_clockwise(self, face):
-        """Rotate a face 90 degrees clockwise"""
-        f = self.faces[face]
-        self.faces[face] = [[f[2][0], f[1][0], f[0][0]],
-                            [f[2][1], f[1][1], f[0][1]],
-                            [f[2][2], f[1][2], f[0][2]]]
-    
-    def move(self, move_str):
-        """Execute a move on the virtual cube"""
-        face = move_str[0]
-        modifier = move_str[1:] if len(move_str) > 1 else ''
-        
-        times = 1
-        if modifier == "'":
-            times = 3
-        elif modifier == '2':
-            times = 2
-        
-        for _ in range(times):
-            self._move_clockwise(face)
-    
-    def _move_clockwise(self, face):
-        """Execute one clockwise rotation"""
-        self.rotate_face_clockwise(face)
-        
-        if face == 'U':
-            temp = self.faces['F'][0][:]
-            self.faces['F'][0] = self.faces['R'][0][:]
-            self.faces['R'][0] = self.faces['B'][0][:]
-            self.faces['B'][0] = self.faces['L'][0][:]
-            self.faces['L'][0] = temp
-        
-        elif face == 'D':
-            temp = self.faces['F'][2][:]
-            self.faces['F'][2] = self.faces['L'][2][:]
-            self.faces['L'][2] = self.faces['B'][2][:]
-            self.faces['B'][2] = self.faces['R'][2][:]
-            self.faces['R'][2] = temp
-        
-        elif face == 'F':
-            temp = [self.faces['U'][2][0], self.faces['U'][2][1], self.faces['U'][2][2]]
-            self.faces['U'][2][0] = self.faces['L'][2][2]
-            self.faces['U'][2][1] = self.faces['L'][1][2]
-            self.faces['U'][2][2] = self.faces['L'][0][2]
-            self.faces['L'][0][2] = self.faces['D'][0][0]
-            self.faces['L'][1][2] = self.faces['D'][0][1]
-            self.faces['L'][2][2] = self.faces['D'][0][2]
-            self.faces['D'][0][0] = self.faces['R'][2][0]
-            self.faces['D'][0][1] = self.faces['R'][1][0]
-            self.faces['D'][0][2] = self.faces['R'][0][0]
-            self.faces['R'][0][0] = temp[0]
-            self.faces['R'][1][0] = temp[1]
-            self.faces['R'][2][0] = temp[2]
-        
-        elif face == 'B':
-            temp = [self.faces['U'][0][0], self.faces['U'][0][1], self.faces['U'][0][2]]
-            self.faces['U'][0][0] = self.faces['R'][0][2]
-            self.faces['U'][0][1] = self.faces['R'][1][2]
-            self.faces['U'][0][2] = self.faces['R'][2][2]
-            self.faces['R'][0][2] = self.faces['D'][2][2]
-            self.faces['R'][1][2] = self.faces['D'][2][1]
-            self.faces['R'][2][2] = self.faces['D'][2][0]
-            self.faces['D'][2][2] = self.faces['L'][2][0]
-            self.faces['D'][2][1] = self.faces['L'][1][0]
-            self.faces['D'][2][0] = self.faces['L'][0][0]
-            self.faces['L'][0][0] = temp[2]
-            self.faces['L'][1][0] = temp[1]
-            self.faces['L'][2][0] = temp[0]
-        
-        elif face == 'R':
-            temp = [self.faces['U'][0][2], self.faces['U'][1][2], self.faces['U'][2][2]]
-            self.faces['U'][0][2] = self.faces['F'][0][2]
-            self.faces['U'][1][2] = self.faces['F'][1][2]
-            self.faces['U'][2][2] = self.faces['F'][2][2]
-            self.faces['F'][0][2] = self.faces['D'][0][2]
-            self.faces['F'][1][2] = self.faces['D'][1][2]
-            self.faces['F'][2][2] = self.faces['D'][2][2]
-            self.faces['D'][0][2] = self.faces['B'][2][0]
-            self.faces['D'][1][2] = self.faces['B'][1][0]
-            self.faces['D'][2][2] = self.faces['B'][0][0]
-            self.faces['B'][0][0] = temp[2]
-            self.faces['B'][1][0] = temp[1]
-            self.faces['B'][2][0] = temp[0]
-        
-        elif face == 'L':
-            temp = [self.faces['U'][0][0], self.faces['U'][1][0], self.faces['U'][2][0]]
-            self.faces['U'][0][0] = self.faces['B'][2][2]
-            self.faces['U'][1][0] = self.faces['B'][1][2]
-            self.faces['U'][2][0] = self.faces['B'][0][2]
-            self.faces['B'][0][2] = self.faces['D'][2][0]
-            self.faces['B'][1][2] = self.faces['D'][1][0]
-            self.faces['B'][2][2] = self.faces['D'][0][0]
-            self.faces['D'][0][0] = self.faces['F'][0][0]
-            self.faces['D'][1][0] = self.faces['F'][1][0]
-            self.faces['D'][2][0] = self.faces['F'][2][0]
-            self.faces['F'][0][0] = temp[0]
-            self.faces['F'][1][0] = temp[1]
-            self.faces['F'][2][0] = temp[2]
-    
-    def is_solved(self):
-        for face in self.faces.values():
-            center = face[1][1]
-            for row in face:
-                for cell in row:
-                    if cell != center:
-                        return False
-        return True
-
-class CubeSolver:
-    """Implements proper layer-by-layer beginner's method"""
-    
-    def __init__(self, rubiks_cube):
-        self.rubiks_cube = rubiks_cube
-        self.vcube = VirtualCube()
-        self.solution = []
-        self.read_cube_state()
-    
-    def read_cube_state(self):
-        """Read actual cube state into virtual cube"""
-        # Map face names to notation
-        mapping = {
-            'top': 'U', 'bottom': 'D', 'front': 'F',
-            'back': 'B', 'right': 'R', 'left': 'L'
-        }
-        
-        # First, determine color mapping from centers
-        color_to_letter = {}
-        for face_name, notation in mapping.items():
-            state = self.rubiks_cube.get_face_state(face_name)
-            center_color = tuple(state[1][1])
-            
-            # Map based on actual color values
-            if abs(center_color[0] - 1.0) < 0.1 and abs(center_color[1] - 1.0) < 0.1 and abs(center_color[2] - 1.0) < 0.1:
-                color_to_letter[center_color] = 'W'  # White
-            elif abs(center_color[0] - 1.0) < 0.1 and abs(center_color[1] - 1.0) < 0.1 and abs(center_color[2] - 0.0) < 0.1:
-                color_to_letter[center_color] = 'Y'  # Yellow
-            elif abs(center_color[0] - 1.0) < 0.1 and abs(center_color[1] - 0.0) < 0.1 and abs(center_color[2] - 0.0) < 0.1:
-                color_to_letter[center_color] = 'R'  # Red
-            elif abs(center_color[0] - 1.0) < 0.1 and abs(center_color[1] - 0.5) < 0.1 and abs(center_color[2] - 0.0) < 0.1:
-                color_to_letter[center_color] = 'O'  # Orange
-            elif abs(center_color[0] - 0.0) < 0.1 and abs(center_color[1] - 0.8) < 0.1 and abs(center_color[2] - 0.0) < 0.1:
-                color_to_letter[center_color] = 'G'  # Green
-            elif abs(center_color[0] - 0.0) < 0.1 and abs(center_color[1] - 0.0) < 0.1 and abs(center_color[2] - 1.0) < 0.1:
-                color_to_letter[center_color] = 'B'  # Blue
-        
-        # Now read all stickers
-        for face_name, notation in mapping.items():
-            state = self.rubiks_cube.get_face_state(face_name)
-            for i in range(3):
-                for j in range(3):
-                    color = tuple(state[i][j])
-                    self.vcube.faces[notation][i][j] = color_to_letter.get(color, 'X')
-    
-    def do_moves(self, move_string):
-        """Apply a sequence of moves"""
-        for move in move_string.split():
-            self.solution.append(move)
-            self.vcube.move(move)
-    
-    def find_white_edge(self, side_color):
-        """Find white edge piece with specific side color"""
-        # Check all edge positions
-        edges = [
-            ('U', 0, 1, 'B'), ('U', 1, 0, 'L'), ('U', 1, 2, 'R'), ('U', 2, 1, 'F'),
-            ('D', 0, 1, 'F'), ('D', 1, 0, 'L'), ('D', 1, 2, 'R'), ('D', 2, 1, 'B'),
-            ('F', 0, 1, 'U'), ('F', 1, 0, 'L'), ('F', 1, 2, 'R'), ('F', 2, 1, 'D'),
-            ('B', 0, 1, 'U'), ('B', 1, 0, 'R'), ('B', 1, 2, 'L'), ('B', 2, 1, 'D'),
-            ('L', 0, 1, 'U'), ('L', 2, 1, 'D'),
-            ('R', 0, 1, 'U'), ('R', 2, 1, 'D'),
-        ]
-        
-        for face, row, col, adj_face in edges:
-            if self.vcube.faces[face][row][col] == 'W':
-                # Get adjacent color
-                if face == 'U' and row == 0: adj_color = self.vcube.faces['B'][0][col]
-                elif face == 'U' and row == 2: adj_color = self.vcube.faces['F'][0][col]
-                elif face == 'U' and col == 0: adj_color = self.vcube.faces['L'][0][1]
-                elif face == 'U' and col == 2: adj_color = self.vcube.faces['R'][0][1]
-                # ... (continue for all cases)
-                else:
-                    continue
-                
-                if adj_color == side_color:
-                    return (face, row, col)
-        
-        return None
-    
-    def solve(self):
-        """Main solving method"""
-        print("Reading cube state...")
-        
-        if self.vcube.is_solved():
-            print("Cube is already solved!")
-            return []
-        
-        print("Solving white cross...")
-        self.solve_white_cross()
-        
-        print("Solving white corners...")
-        self.solve_white_corners()
-        
-        print("Solving middle layer...")
-        self.solve_middle_layer()
-        
-        print("Solving yellow cross...")
-        self.solve_yellow_cross()
-        
-        print("Solving yellow edges...")
-        self.orient_yellow_edges()
-        
-        print("Positioning yellow corners...")
-        self.position_yellow_corners()
-        
-        print("Orienting yellow corners...")
-        self.orient_yellow_corners()
-        
-        print(f"Solution: {len(self.solution)} moves")
-        return self.solution
-    
-    def solve_white_cross(self):
-        """Solve white cross on top using daisy method"""
-        # This is simplified - full implementation would be very long
-        # Using repeated algorithms to build white cross
-        max_attempts = 50
-        for _ in range(max_attempts):
-            # Check if white cross is formed
-            if (self.vcube.faces['U'][0][1] == 'W' and 
-                self.vcube.faces['U'][1][0] == 'W' and
-                self.vcube.faces['U'][1][2] == 'W' and 
-                self.vcube.faces['U'][2][1] == 'W'):
-                break
-            
-            # Try to move white edges to top
-            self.do_moves("F F")
-            self.do_moves("U")
-    
-    def solve_white_corners(self):
-        """Insert white corners"""
-        for _ in range(30):
-            if self.is_white_face_done():
-                break
-            self.do_moves("R U R' U'")
-    
-    def solve_middle_layer(self):
-        """Solve middle layer edges"""
-        for _ in range(40):
-            if self.is_middle_layer_done():
-                break
-            self.do_moves("U R U' R' U' F' U F")
-            self.do_moves("D")
-    
-    def solve_yellow_cross(self):
-        """Create yellow cross on bottom"""
-        for _ in range(10):
-            if self.is_yellow_cross():
-                break
-            self.do_moves("F R U R' U' F'")
-            self.do_moves("D")
-    
-    def orient_yellow_edges(self):
-        """Position yellow edges correctly"""
-        for _ in range(15):
-            self.do_moves("R U R' U R U U R' U")
-    
-    def position_yellow_corners(self):
-        """Position yellow corners"""
-        for _ in range(15):
-            self.do_moves("U R U' L' U R' U' L")
-    
-    def orient_yellow_corners(self):
-        """Orient yellow corners to solve"""
-        for _ in range(20):
-            if self.vcube.is_solved():
-                break
-            self.do_moves("R' D' R D R' D' R D")
-            self.do_moves("D")
-    
-    def is_white_face_done(self):
-        """Check if white face is complete"""
-        for row in self.vcube.faces['U']:
-            for cell in row:
-                if cell != 'W':
-                    return False
-        return True
-    
-    def is_middle_layer_done(self):
-        """Check if middle layer is solved"""
-        for face in ['F', 'B', 'R', 'L']:
-            if self.vcube.faces[face][1][1] != self.vcube.faces[face][1][0]:
-                return False
-            if self.vcube.faces[face][1][1] != self.vcube.faces[face][1][2]:
-                return False
-        return True
-    
-    def is_yellow_cross(self):
-        """Check if yellow cross exists"""
-        d = self.vcube.faces['D']
-        return (d[0][1] == 'Y' and d[1][0] == 'Y' and 
-                d[1][2] == 'Y' and d[2][1] == 'Y')
 
 class Cubie:
     """Represents a single cubie (small cube) in the Rubik's Cube"""
@@ -402,9 +84,6 @@ class Cubie:
         
         glPopMatrix()
     
-    def copy(self):
-        """Create a deep copy of this cubie"""
-        return Cubie(self.position.copy(), self.colors.copy())
 
 class MoveAnimator:
     """Handles smooth animation of cube moves"""
@@ -438,18 +117,20 @@ class MoveAnimator:
             self.target_angle = 90
         
         # Set rotation axis based on face
+        # Note: Axis direction determines clockwise vs counterclockwise
+        # Standard cube notation: clockwise when looking at the face
         if face == 'F':
-            self.rotation_axis = [0, 0, direction]
-        elif face == 'B':
             self.rotation_axis = [0, 0, -direction]
+        elif face == 'B':
+            self.rotation_axis = [0, 0, direction]
         elif face == 'U':
-            self.rotation_axis = [0, direction, 0]
-        elif face == 'D':
             self.rotation_axis = [0, -direction, 0]
+        elif face == 'D':
+            self.rotation_axis = [0, direction, 0]
         elif face == 'R':
-            self.rotation_axis = [direction, 0, 0]
-        elif face == 'L':
             self.rotation_axis = [-direction, 0, 0]
+        elif face == 'L':
+            self.rotation_axis = [direction, 0, 0]
     
     def update(self):
         """Update animation state, returns True if animation complete"""
@@ -484,6 +165,7 @@ class RubiksCube:
         self.move_queue = deque()
         self.current_solution = []
         self.solving = False
+        self.move_history = []
         self.initialize_cube()
         
     def initialize_cube(self):
@@ -505,6 +187,7 @@ class RubiksCube:
         self.move_queue.clear()
         self.current_solution = []
         self.solving = False
+        self.move_history = []
     
     def get_face_state(self, face):
         """Get 3x3 grid of colors for a specific face for minimap"""
@@ -565,14 +248,103 @@ class RubiksCube:
             return [c for c in self.cubies if abs(c.position[0] + 1) < 0.1]
         return []
     
+    def to_singmaster(self):
+        """
+        Convert visual cube state directly to Singmaster notation for twophase.
+        Format: 12 edges + 8 corners
+        
+        Looking at cube with Green=Front, White=Up:
+        - Face arrays are [row][col] where row 0 is top, col 0 is left
+        """
+        # Map RGB to face letter based on center colors
+        def rgb_to_face(rgb):
+            if rgb is None:
+                return '?'
+            color_map = {
+                'W': 'U', 'Y': 'D', 'G': 'F', 'B': 'B', 'R': 'R', 'O': 'L'
+            }
+            for letter, color in COLORS.items():
+                if letter != 'K' and np.allclose(rgb, color, atol=0.1):
+                    return color_map.get(letter, '?')
+            return '?'
+        
+        # Get face states - each is 3x3 array [row][col]
+        U = self.get_face_state('top')
+        D = self.get_face_state('bottom')
+        F = self.get_face_state('front')
+        B = self.get_face_state('back')
+        R = self.get_face_state('right')
+        L = self.get_face_state('left')
+        
+        # Standard Singmaster edge order: UF UR UB UL DF DR DB DL FR FL BR BL
+        # Face arrays: row 0=top, row 2=bottom when looking at face
+        # U face: row 0 = front edge, row 2 = back edge (looking down from above)
+        # D face: row 0 = back edge, row 2 = front edge (looking up from below)
+        edges = []
+        
+        # UF - U front edge + F top edge
+        edges.append(rgb_to_face(U[0][1]) + rgb_to_face(F[0][1]))
+        # UR - U right edge + R top edge
+        edges.append(rgb_to_face(U[1][2]) + rgb_to_face(R[0][1]))
+        # UB - U back edge + B top edge
+        edges.append(rgb_to_face(U[2][1]) + rgb_to_face(B[0][1]))
+        # UL - U left edge + L top edge
+        edges.append(rgb_to_face(U[1][0]) + rgb_to_face(L[0][1]))
+        # DF - D front edge + F bottom edge
+        edges.append(rgb_to_face(D[2][1]) + rgb_to_face(F[2][1]))
+        # DR - D right edge + R bottom edge
+        edges.append(rgb_to_face(D[1][2]) + rgb_to_face(R[2][1]))
+        # DB - D back edge + B bottom edge
+        edges.append(rgb_to_face(D[0][1]) + rgb_to_face(B[2][1]))
+        # DL - D left edge + L bottom edge
+        edges.append(rgb_to_face(D[1][0]) + rgb_to_face(L[2][1]))
+        # FR - F right edge + R front edge (left side of R when looking at R)
+        edges.append(rgb_to_face(F[1][2]) + rgb_to_face(R[1][0]))
+        # FL - F left edge + L front edge (right side of L when looking at L)
+        edges.append(rgb_to_face(F[1][0]) + rgb_to_face(L[1][2]))
+        # BR - B left edge (its right when looking at it) + R back edge (right side of R)
+        edges.append(rgb_to_face(B[1][0]) + rgb_to_face(R[1][2]))
+        # BL - B right edge (its left when looking at it) + L back edge (left side of L)
+        edges.append(rgb_to_face(B[1][2]) + rgb_to_face(L[1][0]))
+        
+        # Standard Singmaster corner order: UFR URB UBL ULF DRF DFL DLB DBR
+        # Corner positions based on get_face_state coordinate mapping:
+        # U: row0=front, row2=back; D: row0=back, row2=front
+        corners = []
+        
+        # UFR - U front-right, F top-right, R top-left
+        corners.append(rgb_to_face(U[0][2]) + rgb_to_face(F[0][2]) + rgb_to_face(R[0][0]))
+        # URB - U back-right, R top-right, B top-left
+        corners.append(rgb_to_face(U[2][2]) + rgb_to_face(R[0][2]) + rgb_to_face(B[0][0]))
+        # UBL - U back-left, B top-right, L top-left
+        corners.append(rgb_to_face(U[2][0]) + rgb_to_face(B[0][2]) + rgb_to_face(L[0][0]))
+        # ULF - U front-left, L top-right, F top-left
+        corners.append(rgb_to_face(U[0][0]) + rgb_to_face(L[0][2]) + rgb_to_face(F[0][0]))
+        # DRF - D front-right, R bottom-left, F bottom-right
+        corners.append(rgb_to_face(D[2][2]) + rgb_to_face(R[2][0]) + rgb_to_face(F[2][2]))
+        # DFL - D front-left, F bottom-left, L bottom-right
+        corners.append(rgb_to_face(D[2][0]) + rgb_to_face(F[2][0]) + rgb_to_face(L[2][2]))
+        # DLB - D back-left, L bottom-left, B bottom-right
+        corners.append(rgb_to_face(D[0][0]) + rgb_to_face(L[2][0]) + rgb_to_face(B[2][2]))
+        # DBR - D back-right, B bottom-left, R bottom-right
+        corners.append(rgb_to_face(D[0][2]) + rgb_to_face(B[2][0]) + rgb_to_face(R[2][2]))
+        
+        return ' '.join(edges + corners)
+    
     def queue_move(self, move):
         """Add a move to the queue"""
         self.move_queue.append(move)
+        # Track move history for solver (only if not solving)
+        if not self.solving:
+            self.move_history.append(move)
     
-    def queue_moves(self, moves):
+    def queue_moves(self, moves, track_history=True):
         """Add multiple moves to the queue"""
         for move in moves:
             self.move_queue.append(move)
+            # Track move history for solver (only if not solving)
+            if track_history and not self.solving:
+                self.move_history.append(move)
     
     def update_animation(self):
         """Update rotation animation"""
@@ -594,6 +366,7 @@ class RubiksCube:
                 # Check if solving is complete
                 if self.solving and not self.move_queue:
                     self.solving = False
+                    print(f"Solve complete!")
     
     def apply_rotation(self):
         """Apply the completed rotation to cubie positions and colors"""
@@ -648,6 +421,9 @@ class RubiksCube:
         if self.animator.is_animating() or self.move_queue:
             return
         
+        # Clear history before shuffling
+        self.move_history = []
+        
         moves = []
         for _ in range(num_moves):
             face = random.choice(FACE_MOVES)
@@ -656,33 +432,39 @@ class RubiksCube:
         
         self.queue_moves(moves)
         print(f"Shuffling with: {' '.join(moves)}")
-
-    def find_simple_solution(self):
-        """Solve using proper layer-by-layer method"""
-        if self.is_solved():
-            return []
-        
-        solver = CubeSolver(self)
-        solution = solver.solve()
-        
-        return solution
     
     def solve(self):
-        """Solve the cube using a simple layer-by-layer approach"""
+        """Solve the cube using TwoPhase algorithm"""
+        # Cancel any ongoing animation/solve first
         if self.animator.is_animating() or self.move_queue:
+            self.move_queue.clear()
+            self.animator.reset()
+            self.solving = False
+            print("Cancelled current solve. Press S again to solve from current state.")
             return
         
-        # Simple solving algorithm - this is a basic implementation
-        # For a real Kociemba or Thistlethwaite solver, you'd need a much more complex algorithm
-        solution = self.find_simple_solution()
+        # Check if already solved
+        if self.is_solved():
+            print("Cube is already solved!")
+            return
+        
+        # Get cube state directly from visual cube
+        cube_state = self.to_singmaster()
+        print(f"Cube state: {cube_state}")
+        
+        solution = None
+        if is_twophase_available():
+            solution = solve_state(cube_state, threads=2, max_length=50)
+            if solution:
+                print(f"TwoPhase solution ({len(solution)} moves): {' '.join(solution)}")
         
         if solution:
             self.current_solution = solution
-            self.queue_moves(solution)
             self.solving = True
+            self.queue_moves(solution, track_history=False)
             print(f"Solving with {len(solution)} moves: {' '.join(solution)}")
         else:
-            print("Cube appears to be solved!")
+            print("Could not find solution!")
 
     
     def is_solved(self):
