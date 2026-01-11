@@ -13,7 +13,7 @@ unsigned char* phase1prune::mem;
 int phase1prune::file_checksum;
 const char* const phase1prune::filename = "p1p1h.dat";
 
-static unsigned char map_phase1_offsets[KOCSYMM][3];
+static unsigned char map_phase1_offsets[CUBE_SYMM][3];
 static int map_phase1[2][12][256];
 
 // ============================================================================
@@ -45,7 +45,7 @@ void phase1prune::gen_table() {
         int at = 0;
         
         for (int cs = 0; cs < CORNERRSYMM; cs++) {
-            int csymm = kocsymm::cornersymm_expand[cs];
+            int csymm = CubeSymmetry::cornersymm_expand[cs];
             for (int eosymm = 0; eosymm < EDGEOSYMM; eosymm++)
                 for (int epsymm = 0; epsymm < EDGEPERM; epsymm++, at += BYTES_PER_ENTRY)
                     if (mem[at] == seek) {
@@ -53,13 +53,13 @@ void phase1prune::gen_table() {
                         int deltadist[NMOVES];
                         for (int mv = 0; mv < NMOVES; mv++) {
                             int rd = 0;
-                            kocsymm kc(csymm, eosymm, epsymm);
+                            CubeSymmetry kc(csymm, eosymm, epsymm);
                             kc.move(mv);
-                            corner_mapinfo& cm = kocsymm::cornersymm[kc.csymm];
+                            corner_mapinfo& cm = CubeSymmetry::cornersymm[kc.csymm];
                             for (int m = cm.minmap; cm.minbits >> m; m++)
                                 if ((cm.minbits >> m) & 1) {
-                                    int deosymm = kocsymm::edgeomap[kocsymm::edgepxor[kc.epsymm][m >> 3] ^ kc.eosymm][m];
-                                    int depsymm = kocsymm::edgepmap[kc.epsymm][m];
+                                    int deosymm = CubeSymmetry::edgeomap[CubeSymmetry::edgepxor[kc.epsymm][m >> 3] ^ kc.eosymm][m];
+                                    int depsymm = CubeSymmetry::edgepmap[kc.epsymm][m];
                                     int dat = ((cm.csymm * EDGEOSYMM + deosymm) * EDGEPERM + depsymm) * BYTES_PER_ENTRY;
                                     rd = mem[dat];
                                     if (rd == 255) {
@@ -168,21 +168,21 @@ void phase1prune::check_integrity() {
 // Lookup Functions
 // ============================================================================
 
-int phase1prune::lookup(const kocsymm& kc) {
-    corner_mapinfo& cm = kocsymm::cornersymm[kc.csymm];
+int phase1prune::lookup(const CubeSymmetry& kc) {
+    corner_mapinfo& cm = CubeSymmetry::cornersymm[kc.csymm];
     int m = cm.minmap;
     int r = mem[BYTES_PER_ENTRY * (((cm.csymm * EDGEOSYMM) +
-            kocsymm::edgeomap[kocsymm::edgepxor[kc.epsymm][m >> 3] ^ kc.eosymm][m]) * 495 +
-            kocsymm::edgepmap[kc.epsymm][m])];
+            CubeSymmetry::edgeomap[CubeSymmetry::edgepxor[kc.epsymm][m >> 3] ^ kc.eosymm][m]) * 495 +
+            CubeSymmetry::edgepmap[kc.epsymm][m])];
     return r;
 }
 
-int phase1prune::lookup(const kocsymm& kc, int togo, int& nextmovemask) {
-    corner_mapinfo& cm = kocsymm::cornersymm[kc.csymm];
+int phase1prune::lookup(const CubeSymmetry& kc, int togo, int& nextmovemask) {
+    corner_mapinfo& cm = CubeSymmetry::cornersymm[kc.csymm];
     int m = cm.minmap;
     int off = BYTES_PER_ENTRY * (((cm.csymm * EDGEOSYMM) +
-              kocsymm::edgeomap[kocsymm::edgepxor[kc.epsymm][m >> 3] ^ kc.eosymm][m]) * EDGEPERM +
-              kocsymm::edgepmap[kc.epsymm][m]);
+              CubeSymmetry::edgeomap[CubeSymmetry::edgepxor[kc.epsymm][m >> 3] ^ kc.eosymm][m]) * EDGEPERM +
+              CubeSymmetry::edgepmap[kc.epsymm][m]);
     int r = mem[off];
     
     if (togo > 0) {
@@ -206,12 +206,12 @@ int phase1prune::lookup(const kocsymm& kc, int togo, int& nextmovemask) {
     return r;
 }
 
-int phase1prune::lookup(const kocsymm& kc, int& mask) {
-    corner_mapinfo& cm = kocsymm::cornersymm[kc.csymm];
+int phase1prune::lookup(const CubeSymmetry& kc, int& mask) {
+    corner_mapinfo& cm = CubeSymmetry::cornersymm[kc.csymm];
     int m = cm.minmap;
     int off = BYTES_PER_ENTRY * (((cm.csymm * EDGEOSYMM) +
-              kocsymm::edgeomap[kocsymm::edgepxor[kc.epsymm][m >> 3] ^ kc.eosymm][m]) * EDGEPERM +
-              kocsymm::edgepmap[kc.epsymm][m]);
+              CubeSymmetry::edgeomap[CubeSymmetry::edgepxor[kc.epsymm][m >> 3] ^ kc.eosymm][m]) * EDGEPERM +
+              CubeSymmetry::edgepmap[kc.epsymm][m]);
     
     mask = 0;
     for (int b = 0; b < 3; b++) {
@@ -236,7 +236,7 @@ int phase1prune::lookup(const kocsymm& kc, int& mask) {
 // Solving
 // ============================================================================
 
-moveseq phase1prune::solve(kocsymm kc) {
+moveseq phase1prune::solve(CubeSymmetry kc) {
     moveseq r;
     int mask;
     int d = lookup(kc, mask);
@@ -244,7 +244,7 @@ moveseq phase1prune::solve(kocsymm kc) {
     while (d > 0) {
         for (int mv = 0; mv < NMOVES; mv++) {
             if ((mask >> mv) & 1) {
-                kocsymm kc2 = kc;
+                CubeSymmetry kc2 = kc;
                 kc2.move(mv);
                 int nd = lookup(kc2, mask);
                 if (nd < d) {
@@ -269,7 +269,7 @@ void phase1prune::init(int suppress_writing) {
         return;
     initialized = 1;
     
-    kocsymm::init();
+    CubeSymmetry::init();
     
     memsize = BYTES_PER_ENTRY * CORNERRSYMM * EDGEOSYMM * EDGEPERM;
     mem = new unsigned char[memsize];
@@ -282,12 +282,12 @@ void phase1prune::init(int suppress_writing) {
     }
     
     // Initialize lookup acceleration tables
-    for (int m = 0; m < KOCSYMM; m++) {
+    for (int m = 0; m < CUBE_SYMM; m++) {
         for (int b = 0; b < 3; b++) {
             int mv = 3 * b;
-            kocsymm kc(0, 0, 0);
+            CubeSymmetry kc(0, 0, 0);
             kc.move(mv);
-            corner_mapinfo& cm = kocsymm::cornersymm[kc.csymm];
+            corner_mapinfo& cm = CubeSymmetry::cornersymm[kc.csymm];
             int mz = cm.minmap ^ m;
             map_phase1_offsets[m][b] = mz;
         }

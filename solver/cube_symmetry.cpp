@@ -1,22 +1,23 @@
-#include "kocsymm.h"
+#include "cube_symmetry.h"
+
 #include <iostream>
 
 using namespace std;
 
 // ============================================================================
-// Static Data Initialization
+// Static Data Initialization for CubeSymmetry
 // ============================================================================
 
-lookup_type kocsymm::cornermove[CORNERSYMM][NMOVES];
-lookup_type kocsymm::edgeomove[EDGEOSYMM][NMOVES];
-lookup_type kocsymm::edgepmove[EDGEPERM][NMOVES];
-lookup_type kocsymm::epsymm_compress[1 << 12];
-lookup_type kocsymm::epsymm_expand[EDGEOSYMM];
-lookup_type kocsymm::cornersymm_expand[CORNERRSYMM];
-corner_mapinfo kocsymm::cornersymm[CORNERSYMM];
-lookup_type kocsymm::edgeomap[EDGEOSYMM][KOCSYMM];
-lookup_type kocsymm::edgepmap[EDGEPERM][KOCSYMM];
-lookup_type kocsymm::edgepxor[EDGEPERM][2];
+lookup_type CubeSymmetry::cornermove[CORNERSYMM][NMOVES];
+lookup_type CubeSymmetry::edgeomove[EDGEOSYMM][NMOVES];
+lookup_type CubeSymmetry::edgepmove[EDGEPERM][NMOVES];
+lookup_type CubeSymmetry::epsymm_compress[1 << 12];
+lookup_type CubeSymmetry::epsymm_expand[EDGEOSYMM];
+lookup_type CubeSymmetry::cornersymm_expand[CORNERRSYMM];
+corner_mapinfo CubeSymmetry::cornersymm[CORNERSYMM];
+lookup_type CubeSymmetry::edgeomap[EDGEOSYMM][CUBE_SYMM];
+lookup_type CubeSymmetry::edgepmap[EDGEPERM][CUBE_SYMM];
+lookup_type CubeSymmetry::edgepxor[EDGEPERM][2];
 
 unsigned char permcube::s4inv[FACT4];
 unsigned char permcube::s4mul[FACT4][FACT4];
@@ -45,7 +46,7 @@ static int bc(int v) {
 }
 
 // Multiply two S4 permutations
-int muls4(int a, int b) {
+static int muls4(int a, int b) {
     int r = 3 & (b >> (2 * (a & 3)));
     r += (3 & (b >> (2 * ((a >> 2) & 3)))) << 2;
     r += (3 & (b >> (2 * ((a >> 4) & 3)))) << 4;
@@ -54,31 +55,31 @@ int muls4(int a, int b) {
 }
 
 // ============================================================================
-// kocsymm Implementation
+// CubeSymmetry Implementation
 // ============================================================================
 
-kocsymm::kocsymm(const cubepos& cp) {
+CubeSymmetry::CubeSymmetry(const cubepos& cp) {
     int c = 0, eo = 0, ep = 0;
-    
+
     // Calculate corner orientation
     for (int i = 6; i >= 0; i--)
         c = 3 * c + cubepos::corner_ori(cp.c[i]);
-    
+
     // Calculate edge orientation and permutation
     for (int i = 10; i >= 0; i--) {
         eo = 2 * eo + cubepos::edge_ori(cp.e[i]);
         ep = 2 * ep + (cp.e[i] & 8);
     }
-    
+
     csymm = c;
     eosymm = eo;
     epsymm = epsymm_compress[ep >> 3];
 }
 
-void kocsymm::set_coset(cubepos& cp) {
+void CubeSymmetry::set_coset(cubepos& cp) {
     int c = csymm, eo = eosymm, ep = epsymm_expand[epsymm];
     int s = 0;
-    
+
     // Set corner orientations
     for (int i = 0; i < 7; i++) {
         int ori = c % 3;
@@ -87,7 +88,7 @@ void kocsymm::set_coset(cubepos& cp) {
         c = c / 3;
     }
     cp.c[7] = cubepos::corner_val(7, (8 * 3 - s) % 3);
-    
+
     // Set edge orientations and positions
     s = 0;
     int nextmid = 4;
@@ -109,12 +110,12 @@ void kocsymm::set_coset(cubepos& cp) {
     }
 }
 
-void kocsymm::canon_into(kocsymm& kc) const {
+void CubeSymmetry::canon_into(CubeSymmetry& kc) const {
     corner_mapinfo& cm = cornersymm[csymm];
     kc.csymm = cornersymm_expand[cm.csymm];
     kc.eosymm = edgeomap[edgepxor[epsymm][cm.minmap >> 3] ^ eosymm][cm.minmap];
     kc.epsymm = edgepmap[epsymm][cm.minmap];
-    
+
     for (int m = cm.minmap + 1; cm.minbits >> m; m++)
         if ((cm.minbits >> m) & 1) {
             int neo = edgeomap[edgepxor[epsymm][m >> 3] ^ eosymm][m];
@@ -128,12 +129,12 @@ void kocsymm::canon_into(kocsymm& kc) const {
         }
 }
 
-int kocsymm::calc_symm() const {
+int CubeSymmetry::calc_symm() const {
     int r = 1;
     corner_mapinfo& cm = cornersymm[csymm];
     int teosymm = edgeomap[edgepxor[epsymm][cm.minmap >> 3] ^ eosymm][cm.minmap];
     int tepsymm = edgepmap[epsymm][cm.minmap];
-    
+
     for (int m = cm.minmap + 1; cm.minbits >> m; m++)
         if (((cm.minbits >> m) & 1) &&
             edgeomap[edgepxor[epsymm][m >> 3] ^ eosymm][m] == teosymm &&
@@ -143,10 +144,10 @@ int kocsymm::calc_symm() const {
 }
 
 // ============================================================================
-// kocsymm Initialization
+// CubeSymmetry Initialization
 // ============================================================================
 
-void kocsymm::init() {
+void CubeSymmetry::init() {
     static int initialized = 0;
     if (initialized)
         return;
@@ -154,7 +155,7 @@ void kocsymm::init() {
 
     // Initialize edge permutation compression table
     int c = 0;
-    for (int i = 0; i < 1 << 12; i++)
+    for (int i = 0; i < (1 << 12); i++)
         if (bc(i) == 4) {
             int rotval = ((i << 4) + (i >> 8)) & 0xfff;
             epsymm_compress[rotval] = c;
@@ -166,12 +167,12 @@ void kocsymm::init() {
     // Initialize move tables
     cubepos cp, cp2;
     for (int i = 0; i < CORNERSYMM; i++) {
-        kocsymm kc(i, i % EDGEOSYMM, i % EDGEPERM);
+        CubeSymmetry kc(i, i % EDGEOSYMM, i % EDGEPERM);
         kc.set_coset(cp);
         for (int mv = 0; mv < NMOVES; mv++) {
             cp2 = cp;
             cp2.movepc(mv);
-            kocsymm kc2(cp2);
+            CubeSymmetry kc2(cp2);
             cornermove[i][mv] = kc2.csymm;
             if (i < EDGEOSYMM)
                 edgeomove[i][mv] = kc2.eosymm;
@@ -186,11 +187,11 @@ void kocsymm::init() {
         int minval = cs;
         int lowm = 0;
         int lowbits = 1;
-        kocsymm kc(cs, 0, 0);
-        for (int m = 1; m < KOCSYMM; m++) {
+        CubeSymmetry kc(cs, 0, 0);
+        for (int m = 1; m < CUBE_SYMM; m++) {
             kc.set_coset(cp);
             cp.remap_into(m, cp2);
-            kocsymm kc2(cp2);
+            CubeSymmetry kc2(cp2);
             if (kc2.csymm < minval) {
                 minval = kc2.csymm;
                 lowbits = 1 << m;
@@ -212,11 +213,11 @@ void kocsymm::init() {
 
     // Initialize edge mapping tables
     for (int ep = 0; ep < EDGEPERM; ep++) {
-        kocsymm kc(0, 0, ep);
-        for (int m = 0; m < KOCSYMM; m++) {
+        CubeSymmetry kc(0, 0, ep);
+        for (int m = 0; m < CUBE_SYMM; m++) {
             kc.set_coset(cp);
             cp.remap_into(m, cp2);
-            kocsymm kc2(cp2);
+            CubeSymmetry kc2(cp2);
             edgepmap[ep][m] = kc2.epsymm;
             if (m == 8) {
                 edgepxor[kc2.epsymm][0] = 0;
@@ -225,11 +226,11 @@ void kocsymm::init() {
         }
     }
     for (int eo = 0; eo < EDGEOSYMM; eo++) {
-        kocsymm kc(0, eo, 0);
-        for (int m = 0; m < KOCSYMM; m++) {
+        CubeSymmetry kc(0, eo, 0);
+        for (int m = 0; m < CUBE_SYMM; m++) {
             kc.set_coset(cp);
             cp.remap_into(m, cp2);
-            kocsymm kc2(cp2);
+            CubeSymmetry kc2(cp2);
             edgeomap[eo][m] = kc2.eosymm;
         }
     }
@@ -244,9 +245,9 @@ void kocsymm::init() {
 permcube::permcube() {
     c8_4 = 0;
     ctp = cbp = 0;
-    et = kocsymm::epsymm_compress[0xf];
+    et = CubeSymmetry::epsymm_compress[0xf];
     em = 0;
-    eb = kocsymm::epsymm_compress[0xf00];
+    eb = CubeSymmetry::epsymm_compress[0xf00];
     etp = emp = ebp = 0;
 }
 
@@ -258,7 +259,7 @@ permcube::permcube(const cubepos& cp) {
 void permcube::init_edge_from_cp(const cubepos& cp) {
     et = em = eb = 0;
     etp = emp = ebp = 0;
-    
+
     for (int i = 11; i >= 0; i--) {
         int perm = cubepos::edge_perm(cp.e[i]);
         if (perm & 4) {
@@ -272,10 +273,10 @@ void permcube::init_edge_from_cp(const cubepos& cp) {
             etp = 4 * etp + (perm & 3);
         }
     }
-    
-    et = kocsymm::epsymm_compress[et];
-    em = kocsymm::epsymm_compress[em];
-    eb = kocsymm::epsymm_compress[eb];
+
+    et = CubeSymmetry::epsymm_compress[et];
+    em = CubeSymmetry::epsymm_compress[em];
+    eb = CubeSymmetry::epsymm_compress[eb];
     etp = s4compress[etp];
     emp = s4compress[emp];
     ebp = s4compress[ebp];
@@ -284,7 +285,7 @@ void permcube::init_edge_from_cp(const cubepos& cp) {
 void permcube::init_corner_from_cp(const cubepos& cp) {
     c8_4 = 0;
     ctp = cbp = 0;
-    
+
     for (int i = 7; i >= 0; i--) {
         int perm = cubepos::corner_perm(cp.c[i]);
         if (perm & 4) {
@@ -294,7 +295,7 @@ void permcube::init_corner_from_cp(const cubepos& cp) {
             ctp = 4 * ctp + (perm & 3);
         }
     }
-    
+
     c8_4 = c8_4_compact[c8_4];
     ctp = s4compress[ctp];
     cbp = s4compress[cbp];
@@ -317,12 +318,12 @@ void permcube::move(int mv) {
 }
 
 void permcube::set_edge_perm(cubepos& cp) const {
-    int et_bits = kocsymm::epsymm_expand[et];
-    int em_bits = kocsymm::epsymm_expand[em];
+    int et_bits = CubeSymmetry::epsymm_expand[et];
+    int em_bits = CubeSymmetry::epsymm_expand[em];
     int et_perm = s4expand[etp];
     int em_perm = s4expand[emp];
     int eb_perm = s4expand[ebp];
-    
+
     for (int i = 0; i < 12; i++)
         if ((et_bits >> i) & 1) {
             cp.e[i] = cubepos::edge_val((3 & et_perm), cubepos::edge_ori(cp.e[i]));
@@ -340,7 +341,7 @@ void permcube::set_corner_perm(cubepos& cp) const {
     int c8_4_bits = c8_4_expand[c8_4];
     int ct_perm = s4expand[ctp];
     int cb_perm = s4expand[cbp];
-    
+
     for (int i = 0; i < 8; i++)
         if ((c8_4_bits >> i) & 1) {
             cp.c[i] = cubepos::corner_val((3 & ct_perm), cubepos::corner_ori(cp.c[i]));
@@ -373,7 +374,7 @@ void permcube::init() {
                 s4expand[coor] = expanded;
                 cc++;
             }
-    
+
     for (int i = 0; i < FACT4; i++)
         for (int j = 0; j < FACT4; j++) {
             int k = s4compress[muls4(s4expand[i], s4expand[j])];
@@ -400,7 +401,7 @@ void permcube::init() {
 
     // Initialize c12_8 table
     for (int i = 0; i < EDGEPERM; i++) {
-        int expbits = kocsymm::epsymm_expand[i];
+        int expbits = CubeSymmetry::epsymm_expand[i];
         if (expbits & 0x0f0)
             c12_8[i] = 255;
         else {
@@ -415,7 +416,7 @@ void permcube::init() {
     for (int i = 0; i < EDGEPERM; i++) {
         permcube pc;
         pc.em = i;
-        int remaining_edges = 0xfff - kocsymm::epsymm_expand[i];
+        int remaining_edges = 0xfff - CubeSymmetry::epsymm_expand[i];
         int mask = 0;
         int bitsseen = 0;
         while (bitsseen < 4) {
@@ -423,8 +424,8 @@ void permcube::init() {
                 bitsseen++;
             mask = 2 * mask + 1;
         }
-        pc.et = kocsymm::epsymm_compress[remaining_edges & mask];
-        pc.eb = kocsymm::epsymm_compress[remaining_edges & ~mask];
+        pc.et = CubeSymmetry::epsymm_compress[remaining_edges & mask];
+        pc.eb = CubeSymmetry::epsymm_compress[remaining_edges & ~mask];
         pc.set_perm(cp);
         for (int mv = 0; mv < NMOVES; mv++) {
             cp2 = cp;

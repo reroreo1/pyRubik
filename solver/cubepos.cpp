@@ -473,8 +473,6 @@ char* cubepos::moveseq_string(const moveseq& seq) {
 // ============================================================================
 
 const char* cubepos::parse_Singmaster(const char* p) {
-    if (strncmp(p, "SING ", 5) == 0)
-        p += 5;
     int m = 0;
     for (int i = 0; i < 12; i++) {
         int c = parse_edge(p) ^ sm_edge_flipped[i];

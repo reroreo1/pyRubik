@@ -1,7 +1,7 @@
 #ifndef PHASE1PRUNE_H
 #define PHASE1PRUNE_H
 
-#include "kocsymm.h"
+#include "cube_symmetry.h"
 
 // Bytes per pruning table entry
 const int BYTES_PER_ENTRY = 4;
@@ -22,15 +22,15 @@ public:
     // Lookup Functions
     // ========================================================================
     
-    static int lookup(const kocsymm& kc, int& mask);
-    static int lookup(const kocsymm& kc);
-    static int lookup(const kocsymm& kc, int togo, int& nextmovemask);
+    static int lookup(const CubeSymmetry& kc, int& mask);
+    static int lookup(const CubeSymmetry& kc);
+    static int lookup(const CubeSymmetry& kc, int togo, int& nextmovemask);
 
     // ========================================================================
     // Solving
     // ========================================================================
     
-    static moveseq solve(kocsymm kc);
+    static moveseq solve(CubeSymmetry kc);
 
     // ========================================================================
     // Table Management

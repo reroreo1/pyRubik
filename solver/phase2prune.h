@@ -1,7 +1,9 @@
 #ifndef PHASE2PRUNE_H
 #define PHASE2PRUNE_H
 
-#include "kocsymm.h"
+// Use the clearer CubeSymmetry / permcube definitions
+// instead of the legacy kocsymm header.
+#include "cube_symmetry.h"
 
 // 8! permutations
 const int FACT8 = 40320;

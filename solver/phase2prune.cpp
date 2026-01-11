@@ -14,7 +14,7 @@ struct corner_reduce {
 };
 
 static corner_reduce corner_reduction[FACT8];
-static lookup_type edgeud_remap[KOCSYMM][FACT8];
+static lookup_type edgeud_remap[CUBE_SYMM][FACT8];
 
 int phase2prune::cornermax;
 unsigned int phase2prune::memsize;
@@ -92,7 +92,7 @@ void phase2prune::gen_table() {
                         int off = corner_reduction[oc].c * (FACT8 / 8);
                         
                         for (int mv = 0; mv < NMOVES; mv++) {
-                            if (!kocsymm::in_Kociemba_group(mv))
+                            if (!CubeSymmetry::in_Kociemba_group(mv))
                                 continue;
                             pc2 = pc;
                             pc2.move(mv);
@@ -106,7 +106,7 @@ void phase2prune::gen_table() {
                                     for (int e8_4 = 0; e8_4 < C8_4; e8_4++) {
                                         int et = permcube::c8_12[e8_4];
                                         int t1 = permcube::eperm_move[et][mv];
-                                        int eb = kocsymm::epsymm_compress[0xf0f - kocsymm::epsymm_expand[et]];
+                                        int eb = CubeSymmetry::epsymm_compress[0xf0f - CubeSymmetry::epsymm_expand[et]];
                                         int t2 = permcube::eperm_move[eb][mv] & 31;
                                         int dst1 = permcube::c12_8[t1 >> 5] * 24 * 24;
                                         t1 &= 31;
@@ -219,7 +219,7 @@ int phase2prune::solve(const permcube& pc, int togo, int canonstate, moveseq& se
     int mask = cubepos::cs_mask(canonstate);
     
     for (int mv = 0; mv < NMOVES; mv++) {
-        if (!kocsymm::in_Kociemba_group(mv))
+        if (!CubeSymmetry::in_Kociemba_group(mv))
             continue;
         if (0 == ((mask >> mv) & 1))
             continue;
@@ -252,7 +252,7 @@ void phase2prune::init(int suppress_writing) {
         return;
     initialized = 1;
     
-    kocsymm::init();
+    CubeSymmetry::init();
     
     // Initialize corner reduction table
     cubepos cp, cp2;
@@ -270,7 +270,7 @@ void phase2prune::init(int suppress_writing) {
                 cubepos mincp = cp;
                 int minbits = 1;
                 
-                for (int m = 1; m < KOCSYMM; m++) {
+                for (int m = 1; m < CUBE_SYMM; m++) {
                     cp.remap_into(m, cp2);
                     if (cp2 < mincp) {
                         mincp = cp2;
@@ -314,13 +314,13 @@ void phase2prune::init(int suppress_writing) {
     cornermax = cornercount;
     
     // Initialize edge remapping table
-    for (int m = 0; m < KOCSYMM; m++) {
+    for (int m = 0; m < CUBE_SYMM; m++) {
         for (int e8_4 = 0; e8_4 < C8_4; e8_4++)
             for (int etp = 0; etp < FACT4; etp++)
                 for (int ebp = 0; ebp < FACT4; ebp++) {
                     permcube pc;
                     pc.et = permcube::c8_12[e8_4];
-                    pc.eb = kocsymm::epsymm_compress[0xf0f - kocsymm::epsymm_expand[pc.et]];
+                    pc.eb = CubeSymmetry::epsymm_compress[0xf0f - CubeSymmetry::epsymm_expand[pc.et]];
                     pc.etp = etp;
                     pc.ebp = ebp;
                     pc.set_perm(cp);
