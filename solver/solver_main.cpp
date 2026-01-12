@@ -1,7 +1,6 @@
-#include "solver_config.h"
 #include "twophase_solver.h"
-#include "phase1prune.h"
-#include "phase2prune.h"
+#include "phase1.h"
+#include "phase2.h"
 
 #include <pthread.h>
 
@@ -13,8 +12,8 @@
 
 int main() {
     // Build or load pruning tables for both phases.
-    phase1prune::init(skipwrite);
-    phase2prune::init(skipwrite);
+    phase1::init(skipwrite);
+    phase2::init(skipwrite);
 
     // Global mutex used around stdin and solution output.
     pthread_mutex_init(&my_mutex, NULL);

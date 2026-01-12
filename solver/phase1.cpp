@@ -1,24 +1,16 @@
-#include "phase1prune.h"
+#include "phase1.h"
 #include <iostream>
 #include <cstdio>
 
 using namespace std;
 
-// ============================================================================
-// Static Data
-// ============================================================================
-
-unsigned int phase1prune::memsize;
-unsigned char* phase1prune::mem;
-int phase1prune::file_checksum;
-const char* const phase1prune::filename = "p1p1h.dat";
+unsigned int phase1::memsize;
+unsigned char* phase1::mem;
+int phase1::file_checksum;
+const char* const phase1::filename = "data1.dat";
 
 static unsigned char map_phase1_offsets[CUBE_SYMM][3];
-static int map_phase1[2][12][256];
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
+static int map_phase1_table[2][12][256];
 
 static int datahash(unsigned int* dat, int sz, int seed) {
     while (sz > 0) {
@@ -28,28 +20,23 @@ static int datahash(unsigned int* dat, int sz, int seed) {
     return seed;
 }
 
-// ============================================================================
-// Table Generation
-// ============================================================================
-
-void phase1prune::gen_table() {
+void phase1::gen_table() {
     memset(mem, -1, memsize);
     mem[0] = 0;
     int seen = 1;
-    
+
     cout << "Gen phase1" << flush;
-    
+
     for (int d = 1; ; d++) {
         int lastiter = (seen == CORNERRSYMM * EDGEOSYMM * EDGEPERM);
         int seek = d - 1;
         int at = 0;
-        
+
         for (int cs = 0; cs < CORNERRSYMM; cs++) {
             int csymm = CubeSymmetry::cornersymm_expand[cs];
             for (int eosymm = 0; eosymm < EDGEOSYMM; eosymm++)
                 for (int epsymm = 0; epsymm < EDGEPERM; epsymm++, at += BYTES_PER_ENTRY)
                     if (mem[at] == seek) {
-                        // Calculate move distances
                         int deltadist[NMOVES];
                         for (int mv = 0; mv < NMOVES; mv++) {
                             int rd = 0;
@@ -70,8 +57,7 @@ void phase1prune::gen_table() {
                                 }
                             deltadist[mv] = rd - seek;
                         }
-                        
-                        // Encode delta distances
+
                         for (int b = 0; b < 3; b++) {
                             int v = 0;
                             int clim = 1;
@@ -95,32 +81,28 @@ void phase1prune::gen_table() {
                         }
                     }
         }
-        
+
         cout << " " << d << flush;
         if (lastiter)
             break;
     }
-    
+
     cout << " done." << endl << flush;
 }
 
-// ============================================================================
-// Table I/O
-// ============================================================================
+const int PHASE1_CHUNKSIZE = 65536;
 
-const int CHUNKSIZE = 65536;
-
-int phase1prune::read_table() {
+int phase1::read_table() {
     FILE* f = fopen(filename, "rb");
     if (f == 0)
         return 0;
-    
+
     int togo = memsize;
     unsigned char* p = mem;
     int seed = 0;
-    
+
     while (togo > 0) {
-        unsigned int siz = (togo > CHUNKSIZE ? CHUNKSIZE : togo);
+        unsigned int siz = (togo > PHASE1_CHUNKSIZE ? PHASE1_CHUNKSIZE : togo);
         if (fread(p, 1, siz, f) != siz) {
             cerr << "Out of data in " << filename << endl;
             fclose(f);
@@ -130,23 +112,22 @@ int phase1prune::read_table() {
         togo -= siz;
         p += siz;
     }
-    
+
     if (fread(&file_checksum, sizeof(int), 1, f) != 1) {
         cerr << "Out of data in " << filename << endl;
         fclose(f);
         return 0;
     }
     fclose(f);
-    
-    if (file_checksum != seed) {
-        cerr << "Bad checksum in " << filename << "; expected "
-             << file_checksum << " but saw " << seed << endl;
+
+    if (file_checksum != datahash((unsigned int*)mem, memsize, 0)) {
+        cerr << "Bad checksum in " << filename << endl;
         return 0;
     }
     return 1;
 }
 
-void phase1prune::write_table() {
+void phase1::write_table() {
     FILE* f = fopen(filename, "wb");
     if (f == 0)
         error("! cannot write pruning file to current directory");
@@ -157,18 +138,14 @@ void phase1prune::write_table() {
     fclose(f);
 }
 
-void phase1prune::check_integrity() {
+void phase1::check_integrity() {
     if (file_checksum != datahash((unsigned int*)mem, memsize, 0))
         error("! integrity of pruning table compromised");
     cout << "Verified integrity of phase one pruning data: "
          << file_checksum << endl;
 }
 
-// ============================================================================
-// Lookup Functions
-// ============================================================================
-
-int phase1prune::lookup(const CubeSymmetry& kc) {
+int phase1::lookup(const CubeSymmetry& kc) {
     corner_mapinfo& cm = CubeSymmetry::cornersymm[kc.csymm];
     int m = cm.minmap;
     int r = mem[BYTES_PER_ENTRY * (((cm.csymm * EDGEOSYMM) +
@@ -177,14 +154,14 @@ int phase1prune::lookup(const CubeSymmetry& kc) {
     return r;
 }
 
-int phase1prune::lookup(const CubeSymmetry& kc, int togo, int& nextmovemask) {
+int phase1::lookup(const CubeSymmetry& kc, int togo, int& nextmovemask) {
     corner_mapinfo& cm = CubeSymmetry::cornersymm[kc.csymm];
     int m = cm.minmap;
     int off = BYTES_PER_ENTRY * (((cm.csymm * EDGEOSYMM) +
               CubeSymmetry::edgeomap[CubeSymmetry::edgepxor[kc.epsymm][m >> 3] ^ kc.eosymm][m]) * EDGEPERM +
               CubeSymmetry::edgepmap[kc.epsymm][m]);
     int r = mem[off];
-    
+
     if (togo > 0) {
         nextmovemask = 0;
         for (int b = 0; b < 3; b++) {
@@ -206,13 +183,13 @@ int phase1prune::lookup(const CubeSymmetry& kc, int togo, int& nextmovemask) {
     return r;
 }
 
-int phase1prune::lookup(const CubeSymmetry& kc, int& mask) {
+int phase1::lookup(const CubeSymmetry& kc, int& mask) {
     corner_mapinfo& cm = CubeSymmetry::cornersymm[kc.csymm];
     int m = cm.minmap;
     int off = BYTES_PER_ENTRY * (((cm.csymm * EDGEOSYMM) +
               CubeSymmetry::edgeomap[CubeSymmetry::edgepxor[kc.epsymm][m >> 3] ^ kc.eosymm][m]) * EDGEPERM +
               CubeSymmetry::edgepmap[kc.epsymm][m]);
-    
+
     mask = 0;
     for (int b = 0; b < 3; b++) {
         int v = mem[off + 1 + b];
@@ -232,15 +209,11 @@ int phase1prune::lookup(const CubeSymmetry& kc, int& mask) {
     return mem[off];
 }
 
-// ============================================================================
-// Solving
-// ============================================================================
-
-moveseq phase1prune::solve(CubeSymmetry kc) {
+moveseq phase1::solve(CubeSymmetry kc) {
     moveseq r;
     int mask;
     int d = lookup(kc, mask);
-    
+
     while (d > 0) {
         for (int mv = 0; mv < NMOVES; mv++) {
             if ((mask >> mv) & 1) {
@@ -259,29 +232,24 @@ moveseq phase1prune::solve(CubeSymmetry kc) {
     return r;
 }
 
-// ============================================================================
-// Initialization
-// ============================================================================
-
-void phase1prune::init(int suppress_writing) {
+void phase1::init(int suppress_writing) {
     static int initialized = 0;
     if (initialized)
         return;
     initialized = 1;
-    
+
     CubeSymmetry::init();
-    
+
     memsize = BYTES_PER_ENTRY * CORNERRSYMM * EDGEOSYMM * EDGEPERM;
     mem = new unsigned char[memsize];
-    
+
     if (!read_table()) {
         gen_table();
         file_checksum = datahash((unsigned int*)mem, memsize, 0);
         if (!suppress_writing)
             write_table();
     }
-    
-    // Initialize lookup acceleration tables
+
     for (int m = 0; m < CUBE_SYMM; m++) {
         for (int b = 0; b < 3; b++) {
             int mv = 3 * b;
@@ -292,7 +260,7 @@ void phase1prune::init(int suppress_writing) {
             map_phase1_offsets[m][b] = mz;
         }
     }
-    
+
     for (int inv = 0; inv < 2; inv++)
         for (int b = 0; b < 6; b++)
             for (int v = 0; v < 256; v++) {
@@ -308,6 +276,6 @@ void phase1prune::init(int suppress_writing) {
                             r |= 1 << (3 * (b % 3) + 9 * c + t);
                     }
                 }
-                map_phase1[inv][b][v] = r;
+                map_phase1_table[inv][b][v] = r;
             }
 }

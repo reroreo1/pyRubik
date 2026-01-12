@@ -2,8 +2,130 @@
 
 #include <cstring>
 #include <strings.h> // ffs
+#include <cstdio>
+#include <iostream>
+#include <map>
+
+// ============================================================================
+// Global configuration and synchronisation
+// ============================================================================
+
+// Default configuration. These values reproduce the original behaviour
+// from the monolithic twophase.cpp implementation.
+
+const int verbose      = 0;   // Minimal output for Python integration
+const int numthreads   = 8;   // Default 8 threads
+
+const int target_length = 50;                 // Target solution length
+const long long phase2limit = 0xffffffffffffffLL; // Phase 2 search limit
+const int skipwrite   = 0;   // Do not suppress writing pruning tables
+const int axesmask    = 63;  // Search all 6 axis/inversion orientations
+
+pthread_mutex_t my_mutex;
+
+void get_global_lock() {
+    pthread_mutex_lock(&my_mutex);
+}
+
+void release_global_lock() {
+    pthread_mutex_unlock(&my_mutex);
+}
+
+// ============================================================================
+// Input handling
+// ============================================================================
+
+int getwork(cubepos& cp) {
+    static int input_seq = 1;
+    const int BUFSIZE = 1000;
+    char buf[BUFSIZE + 1];
+
+    get_global_lock();
+
+    if (fgets(buf, BUFSIZE, stdin) == 0) {
+        release_global_lock();
+        return -1;  // EOF
+    }
+
+    // Parse Singmaster notation into a cubepos instance.
+    if (cp.parse_Singmaster(buf) != 0) {
+        error("! could not parse Singmaster notation");
+        release_global_lock();
+        return -1;
+    }
+
+    int r = input_seq++;
+    release_global_lock();
+    return r;
+}
 
 using namespace std;
+
+// ============================================================================
+// Solution queue and ordered output
+// ============================================================================
+
+// Global bookkeeping for solutions. All access is serialized via
+// the global mutex.
+
+static map<int, Solution> g_queue;   // Out‑of‑order solutions from worker threads
+static int g_next_sequence = 1;      // Next sequence id expected on output
+static int g_missed_target = 0;      // Number of solutions longer than target_length
+static int g_solved = 0;             // Total number of solved positions
+static long long g_phase2total = 0;  // Cumulative phase 2 node count
+
+// Print a single solution. Only the move sequence is printed to keep
+// the interface simple for the Python caller.
+static void display_solution(const cubepos& cp,
+                             int seq,
+                             long long phase2probes,
+                             const moveseq& sol) {
+    (void)cp;   // The cube itself is not printed, only its solution
+    (void)seq;  // Sequence id is used only for ordering
+
+    g_phase2total += phase2probes;
+    cout << cubepos::moveseq_string(sol) << endl;
+}
+
+void report_solution(const cubepos& cp,
+                     int seq,
+                     long long phase2probes,
+                     const moveseq& sol) {
+    get_global_lock();
+
+    g_solved++;
+    if (!sol.empty() && static_cast<int>(sol.size()) > target_length && target_length) {
+        g_missed_target++;
+    }
+
+    // If this solution is the next one in sequence, print it immediately
+    // and flush any queued later solutions that can now be emitted.
+    if (seq == g_next_sequence) {
+        display_solution(cp, seq, phase2probes, sol);
+        ++g_next_sequence;
+
+        while (true) {
+            map<int, Solution>::iterator it = g_queue.find(g_next_sequence);
+            if (it == g_queue.end()) {
+                break;
+            }
+            Solution& s = it->second;
+            display_solution(s.cube, s.sequence_id, s.phase2_probes, s.moves);
+            g_queue.erase(it);
+            ++g_next_sequence;
+        }
+    } else {
+        // Otherwise, remember this solution until all earlier ones finish.
+        Solution stored;
+        stored.cube = cp;
+        stored.sequence_id = seq;
+        stored.phase2_probes = phase2probes;
+        stored.moves = sol;
+        g_queue[seq] = stored;
+    }
+
+    release_global_lock();
+}
 
 // Check whether two cube positions are equivalent under any of
 // the symmetries used by the Kociemba coordinate system.
@@ -56,7 +178,7 @@ void TwophaseSolver::solve(int seqarg, cubepos& cp) {
             kc6[ind] = CubeSymmetry(cp2);
             pc6[ind] = permcube(cp2);
             kc6[ind].canon_into(kccanon6[ind]);
-            mindepth[ind] = phase1prune::lookup(kc6[ind]);
+            mindepth[ind] = phase1::lookup(kc6[ind]);
 
             if (mindepth[ind] < minmindepth) {
                 minmindepth = mindepth[ind];
@@ -141,7 +263,7 @@ void TwophaseSolver::solve_phase1(const CubeSymmetry& kc,
 
         kc2 = kc;
         kc2.move(mv);
-        int nd = phase1prune::lookup(kc2, togo, newmovemask);
+        int nd = phase1::lookup(kc2, togo, newmovemask);
 
         if (nd <= togo && (togo == nd || togo + nd >= 5)) {
             pc2 = pc;
@@ -160,10 +282,10 @@ void TwophaseSolver::solve_phase1(const CubeSymmetry& kc,
 
 void TwophaseSolver::solve_phase2(const permcube& pc, int sofar) {
     ++phase2probes;
-    int d = phase2prune::lookup(pc);
+    int d = phase2::lookup(pc);
 
     if (d + sofar < bestsol) {
-        moveseq ms = phase2prune::solve(pc, bestsol - sofar - 1);
+        moveseq ms = phase2::solve(pc, bestsol - sofar - 1);
         if (static_cast<int>(ms.size()) + sofar < bestsol &&
             (!ms.empty() || pc == identity_pc)) {
             bestsol = static_cast<int>(ms.size()) + sofar;

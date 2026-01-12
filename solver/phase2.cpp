@@ -1,12 +1,8 @@
-#include "phase2prune.h"
+#include "phase2.h"
 #include <iostream>
 #include <cstdio>
 
 using namespace std;
-
-// ============================================================================
-// Static Data
-// ============================================================================
 
 struct corner_reduce {
     unsigned char m, parity;
@@ -16,15 +12,11 @@ struct corner_reduce {
 static corner_reduce corner_reduction[FACT8];
 static lookup_type edgeud_remap[CUBE_SYMM][FACT8];
 
-int phase2prune::cornermax;
-unsigned int phase2prune::memsize;
-unsigned int* phase2prune::mem;
-const char* const phase2prune::filename = "p2p1h.dat";
-int phase2prune::file_checksum;
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
+int phase2::cornermax;
+unsigned int phase2::memsize;
+unsigned int* phase2::mem;
+const char* const phase2::filename = "data2.dat";
+int phase2::file_checksum;
 
 inline int corner_coordinate(const permcube& pc) {
     return (pc.c8_4 * FACT4 + pc.ctp) * FACT4 + pc.cbp;
@@ -42,16 +34,12 @@ static int datahash(unsigned int* dat, int sz, int seed) {
     return seed;
 }
 
-// ============================================================================
-// Lookup Functions
-// ============================================================================
-
-int phase2prune::lookup(const cubepos& cp) {
+int phase2::lookup(const cubepos& cp) {
     permcube pc(cp);
     return lookup(pc);
 }
 
-int phase2prune::lookup(const permcube& pc) {
+int phase2::lookup(const permcube& pc) {
     int cc = corner_coordinate(pc);
     corner_reduce& cr = corner_reduction[cc];
     int off = cr.c * FACT8 + edgeud_remap[cr.m][edge_coordinate(pc)];
@@ -62,20 +50,16 @@ int phase2prune::lookup(const permcube& pc) {
         return r + 1;
 }
 
-// ============================================================================
-// Table Generation
-// ============================================================================
-
-void phase2prune::gen_table() {
+void phase2::gen_table() {
     memset(mem, 255, memsize);
     cout << "Gen phase2" << flush;
     mem[0] &= ~14;
     int seen = 1;
-    
+
     for (int d = 0; d < 15; d++) {
         unsigned int seek = (d ? d - 1 : 1);
         int newval = d;
-        
+
         for (int c8_4 = 0; c8_4 < C8_4; c8_4++)
             for (int ctp = 0; ctp < FACT4; ctp++)
                 for (int cbp = 0; cbp < FACT4; cbp++) {
@@ -85,12 +69,12 @@ void phase2prune::gen_table() {
                     pc.cbp = cbp;
                     int oc = corner_coordinate(pc);
                     corner_reduce& cr = corner_reduction[oc];
-                    
+
                     if (cr.minbits & 1) {
                         permcube pc2, pc3, pc4;
                         cubepos cp2, cp3;
                         int off = corner_reduction[oc].c * (FACT8 / 8);
-                        
+
                         for (int mv = 0; mv < NMOVES; mv++) {
                             if (!CubeSymmetry::in_Kociemba_group(mv))
                                 continue;
@@ -99,7 +83,7 @@ void phase2prune::gen_table() {
                             int dest_off = corner_coordinate(pc2);
                             corner_reduce& cr2 = corner_reduction[dest_off];
                             int destat = cr2.c * (FACT8 / 8);
-                            
+
                             for (int m = cr2.m; (1 << m) <= cr2.minbits; m++)
                                 if ((cr2.minbits >> m) & 1) {
                                     int at = 0;
@@ -110,7 +94,7 @@ void phase2prune::gen_table() {
                                         int t2 = permcube::eperm_move[eb][mv] & 31;
                                         int dst1 = permcube::c12_8[t1 >> 5] * 24 * 24;
                                         t1 &= 31;
-                                        
+
                                         for (int etp = 0; etp < FACT4; etp++)
                                             for (int ebp = 0; ebp < FACT4; ebp++, at++) {
                                                 if (mem[off + (at >> 3)] == 0xffffffff) {
@@ -132,32 +116,28 @@ void phase2prune::gen_table() {
                         }
                     }
                 }
-        
+
         if (d == 0)
             mem[0] &= ~15;
         cout << " " << d << flush;
     }
-    
+
     cout << " done." << endl << flush;
 }
 
-// ============================================================================
-// Table I/O
-// ============================================================================
+const int PHASE2_CHUNKSIZE = 65536;
 
-const int CHUNKSIZE = 65536;
-
-int phase2prune::read_table() {
+int phase2::read_table() {
     FILE* f = fopen(filename, "rb");
     if (f == 0)
         return 0;
-    
+
     int togo = memsize;
     unsigned int* p = mem;
     int seed = 0;
-    
+
     while (togo > 0) {
-        unsigned int siz = (togo > CHUNKSIZE ? CHUNKSIZE : togo);
+        unsigned int siz = (togo > PHASE2_CHUNKSIZE ? PHASE2_CHUNKSIZE : togo);
         if (fread(p, 1, siz, f) != siz) {
             cerr << "Out of data in " << filename << endl;
             fclose(f);
@@ -167,14 +147,14 @@ int phase2prune::read_table() {
         togo -= siz;
         p += siz / sizeof(unsigned int);
     }
-    
+
     if (fread(&file_checksum, sizeof(int), 1, f) != 1) {
         cerr << "Out of data in " << filename << endl;
         fclose(f);
         return 0;
     }
     fclose(f);
-    
+
     if (file_checksum != seed) {
         cerr << "Bad checksum in " << filename << "; expected "
              << file_checksum << " but saw " << seed << endl;
@@ -183,7 +163,7 @@ int phase2prune::read_table() {
     return 1;
 }
 
-void phase2prune::write_table() {
+void phase2::write_table() {
     FILE* f = fopen(filename, "wb");
     if (f == 0)
         error("! cannot write pruning file to current directory");
@@ -194,18 +174,14 @@ void phase2prune::write_table() {
     fclose(f);
 }
 
-void phase2prune::check_integrity() {
+void phase2::check_integrity() {
     if (file_checksum != datahash(mem, memsize, 0))
         error("! integrity of pruning table compromised");
     cout << "Verified integrity of phase two pruning data: "
          << file_checksum << endl;
 }
 
-// ============================================================================
-// Solving
-// ============================================================================
-
-int phase2prune::solve(const permcube& pc, int togo, int canonstate, moveseq& seq) {
+int phase2::solve(const permcube& pc, int togo, int canonstate, moveseq& seq) {
     int d = lookup(pc);
     if (d > togo + 1)
         return -1;
@@ -213,11 +189,11 @@ int phase2prune::solve(const permcube& pc, int togo, int canonstate, moveseq& se
         return 0;
     if (togo < 1)
         return -1;
-    
+
     togo--;
     permcube pc2;
     int mask = cubepos::cs_mask(canonstate);
-    
+
     for (int mv = 0; mv < NMOVES; mv++) {
         if (!CubeSymmetry::in_Kociemba_group(mv))
             continue;
@@ -233,7 +209,7 @@ int phase2prune::solve(const permcube& pc, int togo, int canonstate, moveseq& se
     return -1;
 }
 
-moveseq phase2prune::solve(const permcube& pc, int maxlen) {
+moveseq phase2::solve(const permcube& pc, int maxlen) {
     moveseq r;
     for (int d = lookup(pc); d <= maxlen; d++)
         if (solve(pc, d, CANONSEQSTART, r) >= 0)
@@ -242,22 +218,17 @@ moveseq phase2prune::solve(const permcube& pc, int maxlen) {
     return r;
 }
 
-// ============================================================================
-// Initialization
-// ============================================================================
-
-void phase2prune::init(int suppress_writing) {
+void phase2::init(int suppress_writing) {
     static int initialized = 0;
     if (initialized)
         return;
     initialized = 1;
-    
+
     CubeSymmetry::init();
-    
-    // Initialize corner reduction table
+
     cubepos cp, cp2;
     int cornercount = 0;
-    
+
     for (int c8_4 = 0; c8_4 < C8_4; c8_4++)
         for (int ctp = 0; ctp < FACT4; ctp++)
             for (int cbp = 0; cbp < FACT4; cbp++) {
@@ -269,7 +240,7 @@ void phase2prune::init(int suppress_writing) {
                 int minm = 0;
                 cubepos mincp = cp;
                 int minbits = 1;
-                
+
                 for (int m = 1; m < CUBE_SYMM; m++) {
                     cp.remap_into(m, cp2);
                     if (cp2 < mincp) {
@@ -280,20 +251,19 @@ void phase2prune::init(int suppress_writing) {
                         minbits |= 1 << m;
                     }
                 }
-                
+
                 int off = corner_coordinate(pc);
                 corner_reduction[off].m = minm;
                 corner_reduction[off].parity = permcube::c8_4_parity[c8_4] ^
                                                (permcube::s4mul[ctp][cbp] & 1);
                 corner_reduction[off].minbits = minbits;
-                
+
                 if (minm == 0) {
                     corner_reduction[off].c = cornercount;
                     cornercount++;
                 }
             }
-    
-    // Set corner indices for non-minimal positions
+
     for (int c8_4 = 0; c8_4 < C8_4; c8_4++)
         for (int ctp = 0; ctp < FACT4; ctp++)
             for (int cbp = 0; cbp < FACT4; cbp++) {
@@ -310,10 +280,9 @@ void phase2prune::init(int suppress_writing) {
                     cr.c = corner_reduction[corner_coordinate(pc2)].c;
                 }
             }
-    
+
     cornermax = cornercount;
-    
-    // Initialize edge remapping table
+
     for (int m = 0; m < CUBE_SYMM; m++) {
         for (int e8_4 = 0; e8_4 < C8_4; e8_4++)
             for (int etp = 0; etp < FACT4; etp++)
@@ -331,11 +300,10 @@ void phase2prune::init(int suppress_writing) {
                     edgeud_remap[m][e8_4 * FACT4 * FACT4 + etp * FACT4 + ebp] = dat;
                 }
     }
-    
-    // Allocate and load/generate pruning table
+
     memsize = cornermax * FACT8 / 2;
     mem = new unsigned int[(memsize + 3) / 4];
-    
+
     if (!read_table()) {
         gen_table();
         file_checksum = datahash(mem, memsize, 0);

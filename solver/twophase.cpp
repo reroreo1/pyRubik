@@ -1,5 +1,5 @@
-#include "phase1prune.h"
-#include "phase2prune.h"
+#include "phase1.h"
+#include "phase2.h"
 #include <pthread.h>
 #include <iostream>
 #include <map>
@@ -159,7 +159,7 @@ public:
                 kc6[ind] = kocsymm(cp2);
                 pc6[ind] = permcube(cp2);
                 kc6[ind].canon_into(kccanon6[ind]);
-                mindepth[ind] = phase1prune::lookup(kc6[ind]);
+                mindepth[ind] = phase1::lookup(kc6[ind]);
                 if (mindepth[ind] < minmindepth)
                     minmindepth = mindepth[ind];
                 uniq[ind] = 1 & (axesmask >> ind);
@@ -223,7 +223,7 @@ public:
             movemask &= movemask - 1;
             kc2 = kc;
             kc2.move(mv);
-            int nd = phase1prune::lookup(kc2, togo, newmovemask);
+            int nd = phase1::lookup(kc2, togo, newmovemask);
             if (nd <= togo && (togo == nd || togo + nd >= 5)) {
                 pc2 = pc;
                 pc2.move(mv);
@@ -241,10 +241,10 @@ public:
     
     void solvep2(const permcube& pc, int sofar) {
         phase2probes++;
-        int d = phase2prune::lookup(pc);
+        int d = phase2::lookup(pc);
         
         if (d + sofar < bestsol) {
-            moveseq ms = phase2prune::solve(pc, bestsol - sofar - 1);
+            moveseq ms = phase2::solve(pc, bestsol - sofar - 1);
             if ((int)(ms.size()) + sofar < bestsol &&
                 (ms.size() > 0 || pc == identity_pc)) {
                 bestsol = ms.size() + sofar;
@@ -317,8 +317,8 @@ void twophasesolver::dowork() {
 
 int main() {
     // Initialize
-    phase1prune::init(skipwrite);
-    phase2prune::init(skipwrite);
+    phase1::init(skipwrite);
+    phase2::init(skipwrite);
     pthread_mutex_init(&my_mutex, NULL);
 
     // Start worker threads
