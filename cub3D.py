@@ -1,3 +1,7 @@
+import os
+# Suppress libdecor warnings on Wayland
+os.environ.setdefault('SDL_VIDEODRIVER', 'x11')
+
 from twophase_solver import solve_state, is_twophase_available
 from collections import deque
 from pygame.locals import *
@@ -8,7 +12,6 @@ import numpy as np
 import pygame
 import random
 import math
-import os
 
 # Color definitions (RGB)
 COLORS = {
@@ -26,68 +29,166 @@ FACE_MOVES = ['F', 'B', 'U', 'D', 'L', 'R']
 MOVE_MODIFIERS = ['', "'", '2']
 
 
+import numpy as np
+from OpenGL.GL import *
+
+import numpy as np
+from OpenGL.GL import *
+
 class Cubie:
     """Represents a single cubie (small cube) in the Rubik's Cube"""
     def __init__(self, position, colors):
         self.position = np.array(position, dtype=float)
         self.colors = colors  # Dictionary mapping face to color
         self.size = 0.95  # Slightly smaller than 1.0 for spacing effect
+        self.corner_radius = 0.08  # Radius for rounded corners
+        self.corner_segments = 4  # Smoothness of corners (4 is good balance)
         
+        # Pre-calculate rounded square geometry once
+        self._vertex_cache = {}
+        
+    def _generate_rounded_square_vertices(self, size):
+        """Generate vertices for a rounded square (cached for performance)"""
+        # Check cache first
+        cache_key = (size, self.corner_radius, self.corner_segments)
+        if cache_key in self._vertex_cache:
+            return self._vertex_cache[cache_key]
+        
+        vertices = []
+        half_size = size / 2
+        inset = half_size - self.corner_radius
+        
+        # Define the four corner centers in 2D
+        corners = [
+            (inset, inset),    # Top-right
+            (-inset, inset),   # Top-left
+            (-inset, -inset),  # Bottom-left
+            (inset, -inset)    # Bottom-right
+        ]
+        
+        # Starting angles for each corner
+        start_angles = [0, 90, 180, 270]
+        
+        # Generate rounded corners
+        for (cx, cy), start_angle in zip(corners, start_angles):
+            for i in range(self.corner_segments + 1):
+                angle = np.radians(start_angle + i * 90 / self.corner_segments)
+                x = cx + self.corner_radius * np.cos(angle)
+                y = cy + self.corner_radius * np.sin(angle)
+                vertices.append((x, y))
+        
+        # Cache the result
+        self._vertex_cache[cache_key] = vertices
+        return vertices
+    
+    def _draw_rounded_face(self, face_name, center, normal, up, color):
+        """Draw a single face with rounded corners"""
+        # Get 2D vertices from cache
+        vertices_2d = self._generate_rounded_square_vertices(self.size)
+        
+        # Calculate right vector (perpendicular to normal and up)
+        right = np.cross(normal, up)
+        
+        # Draw filled face using triangle fan
+        glNormal3f(*normal)
+        glColor3f(*color)
+        
+        glBegin(GL_TRIANGLE_FAN)
+        glVertex3fv(center)  # Center point
+        for x, y in vertices_2d:
+            vertex = center + x * right + y * up
+            glVertex3fv(vertex)
+        # Close the fan
+        x, y = vertices_2d[0]
+        vertex = center + x * right + y * up
+        glVertex3fv(vertex)
+        glEnd()
+        
+        # Draw edge outline
+        glColor3f(0, 0, 0)
+        glLineWidth(1.5)
+        glBegin(GL_LINE_LOOP)
+        for x, y in vertices_2d:
+            vertex = center + x * right + y * up
+            glVertex3fv(vertex)
+        glEnd()
+    
     def draw(self):
-        """Draw the cubie with colored faces"""
+        """Draw the cubie with colored faces and rounded corners"""
         glPushMatrix()
         glTranslatef(*self.position)
         
-        s = self.size / 1.95
+        s = self.size / 2
         
-        # Define vertices
-        vertices = [
-            [-s, -s, -s], [s, -s, -s], [s, s, -s], [-s, s, -s],  # Back
-            [-s, -s, s], [s, -s, s], [s, s, s], [-s, s, s]       # Front
-        ]
-        
-        # Define faces with their vertices and normals
+        # Define face data: (name, center, normal, up_vector)
         faces = [
-            ('front', [4, 5, 6, 7], [0, 0, 1]),
-            ('back', [1, 0, 3, 2], [0, 0, -1]),
-            ('top', [3, 7, 6, 2], [0, 1, 0]),
-            ('bottom', [0, 1, 5, 4], [0, -1, 0]),
-            ('right', [1, 2, 6, 5], [1, 0, 0]),
-            ('left', [0, 4, 7, 3], [-1, 0, 0])
+            ('front', [0, 0, s], [0, 0, 1], [0, 1, 0]),
+            ('back', [0, 0, -s], [0, 0, -1], [0, 1, 0]),
+            ('top', [0, s, 0], [0, 1, 0], [0, 0, -1]),
+            ('bottom', [0, -s, 0], [0, -1, 0], [0, 0, 1]),
+            ('right', [s, 0, 0], [1, 0, 0], [0, 1, 0]),
+            ('left', [-s, 0, 0], [-1, 0, 0], [0, 1, 0])
         ]
         
-        glBegin(GL_QUADS)
-        for face_name, indices, normal in faces:
-            color = self.colors.get(face_name, COLORS['K'])
-            
-            # Add lighting effect
-            glNormal3f(*normal)
-            glColor3f(*color)
-            
-            for idx in indices:
-                glVertex3fv(vertices[idx])
-        glEnd()
+        # Enable lighting for better appearance
+        glEnable(GL_LIGHTING)
+        glEnable(GL_LIGHT0)
         
-        # Draw black edges for better visibility
-        glColor3f(0, 0, 0)
-        glLineWidth(1.5)
-        edges = [
-            [0, 1], [1, 2], [2, 3], [3, 0],  # Back face
-            [4, 5], [5, 6], [6, 7], [7, 4],  # Front face
-            [0, 4], [1, 5], [2, 6], [3, 7]   # Connecting edges
-        ]
-        glBegin(GL_LINES)
-        for edge in edges:
-            for vertex in edge:
-                glVertex3fv(vertices[vertex])
-        glEnd()
+        for face_name, center, normal, up in faces:
+            color = self.colors.get(face_name, (0.1, 0.1, 0.1))  # Default to dark gray
+            self._draw_rounded_face(
+                face_name,
+                np.array(center, dtype=float),
+                np.array(normal, dtype=float),
+                np.array(up, dtype=float),
+                color
+            )
         
+        glDisable(GL_LIGHTING)
         glPopMatrix()
     
+    def rotate(self, axis, angle):
+        """Rotate the cubie around a given axis by angle (in degrees)"""
+        rad = np.radians(angle)
+        cos_a = np.cos(rad)
+        sin_a = np.sin(rad)
+        
+        # Rotation matrices for each axis
+        if axis == 'x':
+            rotation_matrix = np.array([
+                [1, 0, 0],
+                [0, cos_a, -sin_a],
+                [0, sin_a, cos_a]
+            ])
+        elif axis == 'y':
+            rotation_matrix = np.array([
+                [cos_a, 0, sin_a],
+                [0, 1, 0],
+                [-sin_a, 0, cos_a]
+            ])
+        elif axis == 'z':
+            rotation_matrix = np.array([
+                [cos_a, -sin_a, 0],
+                [sin_a, cos_a, 0],
+                [0, 0, 1]
+            ])
+        else:
+            return
+        
+        # Rotate position
+        self.position = rotation_matrix @ self.position
+        
+        # Update color mapping (rotate the colors to new faces)
+        # This would need to be implemented based on your specific needs
+        pass
+    
+
+import numpy as np
 
 class MoveAnimator:
     """Handles smooth animation of cube moves"""
-    def __init__(self, speed=7.0):
+    
+    def __init__(self, speed=10.0):
         self.speed = speed  # degrees per frame
         self.animation_speed = speed 
         self.current_move = None
@@ -117,8 +218,6 @@ class MoveAnimator:
             self.target_angle = 90
         
         # Set rotation axis based on face
-        # Note: Axis direction determines clockwise vs counterclockwise
-        # Standard cube notation: clockwise when looking at the face
         if face == 'F':
             self.rotation_axis = [0, 0, -direction]
         elif face == 'B':
@@ -137,6 +236,11 @@ class MoveAnimator:
         if self.current_move is None:
             return True
         
+        # Simple smooth easing using smoothstep
+        progress = min(1.0, self.rotation_angle / self.target_angle)
+        eased = progress * progress * (3 - 2 * progress)
+        
+        # Increment rotation
         self.rotation_angle += self.animation_speed
         
         if self.rotation_angle >= self.target_angle:
@@ -366,7 +470,8 @@ class RubiksCube:
                 # Check if solving is complete
                 if self.solving and not self.move_queue:
                     self.solving = False
-                    print(f"Solve complete!")
+                    print(f"Cube Solved Successfully!")
+                    print(f"------------------------------------------------------------------------------------------------")
     
     def apply_rotation(self):
         """Apply the completed rotation to cubie positions and colors"""
@@ -431,7 +536,8 @@ class RubiksCube:
             moves.append(face + modifier)
         
         self.queue_moves(moves)
-        print(f"Shuffling with: {' '.join(moves)}")
+        print(f"Shuffling with ({len(moves)} moves) ==> {' '.join(moves)}")
+    
     
     def solve(self):
         """Solve the cube using TwoPhase algorithm"""
@@ -450,19 +556,17 @@ class RubiksCube:
         
         # Get cube state directly from visual cube
         cube_state = self.to_singmaster()
-        print(f"Cube state: {cube_state}")
         
         solution = None
         if is_twophase_available():
-            solution = solve_state(cube_state, threads=2, max_length=50)
+            solution = solve_state(cube_state, threads=4, max_length=50)
             if solution:
-                print(f"TwoPhase solution ({len(solution)} moves): {' '.join(solution)}")
+                print(f"solving with  ({len(solution)} moves)  ==> {' '.join(solution)}")
         
         if solution:
             self.current_solution = solution
             self.solving = True
             self.queue_moves(solution, track_history=False)
-            print(f"Solving with {len(solution)} moves: {' '.join(solution)}")
         else:
             print("Could not find solution!")
 
