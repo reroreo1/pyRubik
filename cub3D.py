@@ -620,6 +620,12 @@ class CubeViewer:
         self.mouse_down = False
         self.last_mouse_pos = None
         
+        # Zoom control
+        self.zoom = 10.0          # Camera distance
+        self.target_zoom = 10.0   # Target for smooth zoom
+        self.min_zoom = 7.0       # Closest zoom
+        self.max_zoom = 20.0      # Farthest zoom
+        
         # Auto-rotation
         self.auto_rotate = False
         
@@ -865,6 +871,11 @@ class CubeViewer:
                 if event.button == 1:
                     self.mouse_down = False
             
+            # Scroll wheel zoom
+            if event.type == MOUSEWHEEL:
+                self.target_zoom -= event.y * 0.5  # Scroll up = zoom in
+                self.target_zoom = max(self.min_zoom, min(self.max_zoom, self.target_zoom))
+            
             if event.type == MOUSEMOTION:
                 if self.mouse_down:
                     pos = pygame.mouse.get_pos()
@@ -981,7 +992,10 @@ class CubeViewer:
         glClearColor(0.85, 0.85, 0.85, 1)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glLoadIdentity()
-        gluLookAt(0, 0, 10, 0, 0, 0, 0, 1, 0)
+        
+        # Smooth zoom interpolation
+        self.zoom += (self.target_zoom - self.zoom) * self.camera_smoothness
+        gluLookAt(0, 0, self.zoom, 0, 0, 0, 0, 1, 0)
 
         # Smooth camera interpolation
         self.current_rotation_x += (self.target_rotation_x - self.current_rotation_x) * self.camera_smoothness
