@@ -269,6 +269,8 @@ class RubiksCube:
         self.move_queue = deque()
         self.current_solution = []
         self.solving = False
+        self.shuffling = False
+        self.shuffle_total = 0
         self.move_history = []
         self.initialize_cube()
         
@@ -472,6 +474,10 @@ class RubiksCube:
                     self.solving = False
                     print(f"Cube Solved Successfully!")
                     print(f"------------------------------------------------------------------------------------------------")
+                
+                # Check if shuffling is complete
+                if self.shuffling and not self.move_queue:
+                    self.shuffling = False
     
     def apply_rotation(self):
         """Apply the completed rotation to cubie positions and colors"""
@@ -522,7 +528,7 @@ class RubiksCube:
         return face
     
     def shuffle(self, num_moves=20):
-        """Shuffle the cube with random moves"""
+        """Shuffle the cube with random moves, avoiding redundant sequences"""
         if self.animator.is_animating() or self.move_queue:
             return
         
@@ -530,11 +536,18 @@ class RubiksCube:
         self.move_history = []
         
         moves = []
+        last_face = None
+        
         for _ in range(num_moves):
-            face = random.choice(FACE_MOVES)
+            # Pick a face different from the last one to avoid canceling moves
+            available_faces = [f for f in FACE_MOVES if f != last_face]
+            face = random.choice(available_faces)
             modifier = random.choice(MOVE_MODIFIERS)
             moves.append(face + modifier)
+            last_face = face
         
+        self.shuffling = True
+        self.shuffle_total = len(moves)
         self.queue_moves(moves)
         print(f"Shuffling with ({len(moves)} moves) ==> {' '.join(moves)}")
     
@@ -832,29 +845,50 @@ class CubeViewer:
     
     def draw_move_display(self):
         """Display current move and solution sequence"""
-        if self.cube.solving and self.cube.current_solution:
+        center_x = self.width // 2
+        
+        if self.cube.shuffling and self.cube.move_queue:
             remaining_moves = list(self.cube.move_queue)
             current_move = self.cube.animator.current_move if self.cube.animator.is_animating() else None
+            done = self.cube.shuffle_total - len(remaining_moves)
             
-            # Display solving status
-            status_text = f"SOLVING... ({len(self.cube.current_solution) - len(remaining_moves)}/{len(self.cube.current_solution)} moves)"
-            self.draw_text_2d(status_text, 440 , 40, self.font, (100, 255, 100))
+            # Display shuffling status (bright yellow, centered)
+            status_text = f"SHUFFLING  {done}/{self.cube.shuffle_total}"
+            text_width = len(status_text) * 10
+            self.draw_text_2d(status_text, center_x - text_width // 2, 40, self.font, (255, 255, 50))
             
-            # Display current move
+            # Display current move (centered, below cube, above next moves)
             if current_move:
-                move_text = f"Move: {current_move}"
-                self.draw_text_2d(move_text, 550, 100, self.font, (255, 255, 100))
+                move_text = f"[ {current_move} ]"
+                self.draw_text_2d(move_text, center_x - 25, self.height - 110, self.font, (0, 0, 0))
+        
+        elif self.cube.solving and self.cube.current_solution:
+            remaining_moves = list(self.cube.move_queue)
+            current_move = self.cube.animator.current_move if self.cube.animator.is_animating() else None
+            total = len(self.cube.current_solution)
+            done = total - len(remaining_moves)
+            
+            # Display solving status (cube green, centered)
+            status_text = f"SOLVING  {done}/{total}"
+            text_width = len(status_text) * 10
+            self.draw_text_2d(status_text, center_x - text_width // 2, 40, self.font, (0, 204, 0))
+            
+            # Display current move (centered, below cube, above next moves)
+            if current_move:
+                move_text = f"[ {current_move} ]"
+                self.draw_text_2d(move_text, center_x - 25, self.height - 100, self.font, (0, 0, 0))
 
-            # Display move sequence
+            # Display move sequence (centered at bottom)
             if remaining_moves:
-                sequence_text = "Next: " + " ".join(list(remaining_moves)[:10])
-                if len(remaining_moves) > 10:
-                    sequence_text += "..."
-                self.draw_text_2d(sequence_text, 490, 740, self.small_font, (200, 200, 200))
+                sequence_text = "Next: " + " ".join(list(remaining_moves)[:8])
+                if len(remaining_moves) > 8:
+                    sequence_text += " ..."
+                text_width = len(sequence_text) * 7
+                self.draw_text_2d(sequence_text, center_x - text_width // 2, self.height - 60, self.small_font, (220, 220, 220))
         
         elif self.cube.animator.is_animating():
-            move_text = f"Move: {self.cube.animator.current_move}"
-            self.draw_text_2d(move_text, 550, 100, self.font, (255, 255, 100))
+            move_text = f"[ {self.cube.animator.current_move} ]"
+            self.draw_text_2d(move_text, center_x - 25, self.height - 100, self.font, (0, 0, 0))
     
     def handle_events(self):
         """Handle keyboard and mouse events"""
