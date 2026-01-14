@@ -1,5 +1,6 @@
 # Two-Phase Kociemba Rubik's Cube Solver
 
+
 ## Overview
 This solver implements the Kociemba two-phase algorithm, a state-of-the-art method for finding near-optimal solutions to the Rubik's Cube. The algorithm guarantees solutions in under 30 moves for any valid cube position and is widely used in speedcubing and robotics.
 
