@@ -347,8 +347,6 @@ class RubiksCube:
         
         # Get cube state directly from visual cube
         cube_state = self.to_singmaster()
-        print(f"Current Cube State singmaster: {cube_state}")
-        
         solution = None
         if is_twophase_available():
             solution = solve_state(cube_state)

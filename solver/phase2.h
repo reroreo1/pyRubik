@@ -62,6 +62,5 @@ public:
     static const char* const filename;            // "data2.dat"
     static int file_checksum;                     // Checksum for verification
 };
-};
 
 #endif

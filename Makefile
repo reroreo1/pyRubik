@@ -8,9 +8,13 @@ all: solver
 
 # Install Python dependencies
 install:
-	@echo "Installing Python dependencies..."
-	pip install -r requirements.txt
-	@echo "✓ Python dependencies installed"
+	@if [ ! -d "env" ]; then \
+		echo "Creating Python virtual environment in ./env..."; \
+		python3 -m venv env; \
+	fi
+	@echo "Installing Python dependencies into ./env..."
+	. ./env/bin/activate && pip install -r requirements.txt
+	@echo "✓ Python dependencies installed in ./env"
 
 # Build the C++ solver
 solver:
@@ -18,11 +22,6 @@ solver:
 	cd solver && $(MAKE) twophase
 	@echo "✓ Solver built successfully"
 
-# Clean up solver build artifacts
-clean:
-	@echo "Cleaning build artifacts..."
-	cd solver && $(MAKE) clean
-	@echo "✓ Build artifacts cleaned"
 
 # Full clean (removes pruning tables too)
 fclean:
@@ -35,8 +34,11 @@ re: fclean all
 
 # Build everything including Python dependencies
 setup: install solver
-	@echo "✓ Setup complete! Ready to run:"
-	@echo "  python3 cub3D.py"
+	@echo "✓ Setup complete!"
+
+# Run the main Python application
+run:
+	python3 cub3D.py
 
 # Help message
 help:
@@ -44,10 +46,9 @@ help:
 	@echo ""
 	@echo "  make all        - Build the C++ solver (default)"
 	@echo "  make install    - Install Python dependencies from requirements.txt"
-	@echo "  make solver     - Build the C++ solver"
 	@echo "  make setup      - Install Python deps and build solver"
-	@echo "  make clean      - Remove build artifacts"
 	@echo "  make fclean     - Full clean (includes pruning tables)"
+	@echo "  make solver     - Build the C++ solver"
 	@echo "  make re         - Rebuild everything"
 	@echo "  make help       - Show this help message"
 	@echo ""

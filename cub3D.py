@@ -401,21 +401,21 @@ class CubeViewer:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
-            
+
             if event.type == MOUSEBUTTONDOWN:
                 if event.button == 1:
                     self.mouse_down = True
                     self.last_mouse_pos = pygame.mouse.get_pos()
-            
+
             if event.type == MOUSEBUTTONUP:
                 if event.button == 1:
                     self.mouse_down = False
-            
+
             # Scroll wheel zoom
             if event.type == MOUSEWHEEL:
                 self.target_zoom -= event.y * 0.5  # Scroll up = zoom in
                 self.target_zoom = max(self.min_zoom, min(self.max_zoom, self.target_zoom))
-            
+
             if event.type == MOUSEMOTION:
                 if self.mouse_down:
                     pos = pygame.mouse.get_pos()
@@ -425,7 +425,7 @@ class CubeViewer:
                         self.target_rotation_y += dx * 0.5
                         self.target_rotation_x = max(min(self.target_rotation_x + dy * 0.5, 45), -45)
                     self.last_mouse_pos = pos
-            
+
             if event.type == KEYDOWN:
                 # Face rotations
                 if event.key == K_f:
@@ -440,17 +440,20 @@ class CubeViewer:
                     self.cube.queue_move('R')
                 elif event.key == K_l:
                     self.cube.queue_move('L')
-                
+
                 # Control keys
                 elif event.key == K_q:
                     return False  # Quit
                 elif event.key == K_w:
                     self.cube.initialize_cube()  # Reset
                     print("Cube reset to solved state")
+                # Prevent shuffle and solve before solver is initialized
                 elif event.key == K_x:
-                    self.cube.shuffle()  # Shuffle
+                    if self.solver_initialized:
+                        self.cube.shuffle()  # Shuffle
                 elif event.key == K_s:
-                    self.cube.solve()  # Solve
+                    if self.solver_initialized:
+                        self.cube.solve()  # Solve
                 elif event.key == K_SPACE:
                     self.auto_rotate = not self.auto_rotate
                 elif event.key == K_ESCAPE:
@@ -584,6 +587,10 @@ class CubeViewer:
         
         # Draw the animated loading cube
         self.loading_cube.draw()
+        text_width, text_height = self.font.size("initializing...")
+        text_x = (self.width - text_width) // 2
+        text_y = self.height - 70
+        self.draw_text_2d("initializing...", text_x, text_y, self.font, (255, 255, 255))
         
         glMatrixMode(GL_PROJECTION)
         glPopMatrix()

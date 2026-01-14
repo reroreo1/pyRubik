@@ -6,7 +6,7 @@ A 3D Rubik's Cube visualizer and solver using OpenGL, Pygame, and Kociemba's two
 
 ```bash
 make setup        # Install dependencies + build solver (one-time setup)
-python3 cub3D.py  # Run the application
+make run  # Run the application
 ```
 
 **Controls:**
@@ -19,29 +19,27 @@ python3 cub3D.py  # Run the application
 ```
 pyRubik/
 ├── Makefile                      # Root build system
-├── REFACTORING.md               # Solver refactoring details
-├── LOADING_SCREEN.md            # Loading screen implementation
 ├── README.md                    # Original project info
 ├── requirements.txt             # Python dependencies
 ├── cub3D.py                     # Main Python GUI application
+├── cubie.py                     
+├── rubiks_cube 
 ├── twophase_solver.py           # Python-C++ bridge
-├── background.jpg               # Background texture (if available)
 │
 └── solver/                      # C++ Solver
     ├── cubepos.cpp/h            # Cube representation & operations
     ├── phase1.cpp/h             # Phase 1: Kociemba reduction
     ├── phase2.cpp/h             # Phase 2: Permutation solving
     ├── cube_symmetry.cpp/h      # Symmetry & coordinate mapping
-    │
-    ├── Solver
     ├── twophase_solver.cpp/h    # Main solver class
-    ├── twophase.cpp             # Configuration (now minimal)
     ├── solver_main.cpp          # Entry point
-    │
-    └── Support
-        ├── corner_order.h       # Corner sticker ordering
-        ├── bestsol.h            # Best solution tracking
-        └── *.dat                # Pruning tables (generated at runtime)
+│
+└── images/               
+    ├── background.jpg               # Background texture (if available)
+    ├── loading.jpg               # Background texture (if available)
+
+└── docs/
+    ├── twophase       # reademe
 ```
 
 ## Key Components
@@ -73,9 +71,7 @@ pyRubik/
 
 ## Documentation
 
-- **[REFACTORING.md](docs/REFACTORING.md)** - Solver optimization & cleanup
-- **[LOADING_SCREEN.md](docs/LOADING_SCREEN.md)** - Background initialization  
-- **[PROJECT_SUMMARY.md](docs/PROJECT_SUMMARY.md)** - Full technical details
+- **[twophase.md](docs/twophase.md)** - Full technical details
 
 ## Prerequisites
 

@@ -54,23 +54,5 @@ public:
     static int file_checksum;                 // For integrity verification
     static const char* const filename;        // "data1.dat"
 };
-public:
-    static void init(int suppress_writing = 0);
-
-    static int lookup(const CubeSymmetry& kc, int& mask);
-    static int lookup(const CubeSymmetry& kc);
-    static int lookup(const CubeSymmetry& kc, int togo, int& nextmovemask);
-
-    static moveseq solve(CubeSymmetry kc);
-
-    static void gen_table();
-    static int read_table();
-    static void write_table();
-
-    static unsigned int memsize;
-    static unsigned char* mem;
-    static int file_checksum;
-    static const char* const filename;
-};
 
 #endif
