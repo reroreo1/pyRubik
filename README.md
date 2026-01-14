@@ -1,6 +1,7 @@
-# pyRubik
+<h1 align="center"> Rubik Cube </h1>
+
+<video src="https://www.youtube.com/watch?v=6fbnkRhYae0" alt="bob" title="gif" width="900" />
 A 3D Rubik's Cube visualizer and solver using OpenGL, Pygame, and Kociemba's two-phase algorithm.
-<video src="cub3d.mp4" title="Title"></video>
 
 ## Quick Start
 
