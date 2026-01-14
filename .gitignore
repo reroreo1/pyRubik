@@ -1,0 +1,14 @@
+# Data files
+*.dat
+
+# Environment files
+.env
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Compiled binaries
+*.o
