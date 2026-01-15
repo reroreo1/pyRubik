@@ -19,7 +19,7 @@ make run  # Run the application
 
 ```
 pyRubik/
-├── Makefile                      # Root build system
+├── Makefile                     # Root build system
 ├── README.md                    # Original project info
 ├── requirements.txt             # Python dependencies
 ├── cub3D.py                     # Main Python GUI application
@@ -34,10 +34,10 @@ pyRubik/
 │   ├── twophase_solver.cpp/h    # Main solver class
 │   └── solver_main.cpp          # Entry point
 └── images/               
-│   ├── background.jpg               # Background texture (if available)
-│   └── loading.jpg               # Background texture (if available)
+│   ├── background.jpg           # Background texture (if available)
+│   └── loading.jpg              # Background texture (if available)
 └── docs/
-    └── twophase       # reademe
+    └── twophase                 # reademe
 ```
 
 ## Key Components
