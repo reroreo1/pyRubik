@@ -26,21 +26,18 @@ pyRubik/
 ├── cubie.py                     
 ├── rubiks_cube 
 ├── twophase_solver.py           # Python-C++ bridge
-│
 └── solver/                      # C++ Solver
-    ├── cubepos.cpp/h            # Cube representation & operations
-    ├── phase1.cpp/h             # Phase 1: Kociemba reduction
-    ├── phase2.cpp/h             # Phase 2: Permutation solving
-    ├── cube_symmetry.cpp/h      # Symmetry & coordinate mapping
-    ├── twophase_solver.cpp/h    # Main solver class
-    ├── solver_main.cpp          # Entry point
-│
+│   ├── cubepos.cpp/h            # Cube representation & operations
+│   ├── phase1.cpp/h             # Phase 1: Kociemba reduction
+│   ├── phase2.cpp/h             # Phase 2: Permutation solving
+│   ├── cube_symmetry.cpp/h      # Symmetry & coordinate mapping
+│   ├── twophase_solver.cpp/h    # Main solver class
+│   └── solver_main.cpp          # Entry point
 └── images/               
-    ├── background.jpg               # Background texture (if available)
-    ├── loading.jpg               # Background texture (if available)
-
+│   ├── background.jpg               # Background texture (if available)
+│   └── loading.jpg               # Background texture (if available)
 └── docs/
-    ├── twophase       # reademe
+    └── twophase       # reademe
 ```
 
 ## Key Components
