@@ -6,6 +6,8 @@ A 3D Rubik's Cube visualizer and solver using OpenGL, Pygame, and Kociemba's two
 ## Quick Start
 
 ```bash
+python3 -m venv env  # Create virtual enviroment
+source 
 make setup        # Install dependencies + build solver (one-time setup)
 make run  # Run the application
 ```
@@ -25,7 +27,7 @@ pyRubik/
 ├── cub3D.py                     # Main Python GUI application
 ├── cubie.py                     
 ├── rubiks_cube 
-├── twophase_solver.py           # Python-C++ bridge
+├── solver.py           # Python-C++ bridge
 └── solver/                      # C++ Solver
 │   ├── cubepos.cpp/h            # Cube representation & operations
 │   ├── phase1.cpp/h             # Phase 1: Kociemba reduction
@@ -48,7 +50,7 @@ pyRubik/
 - **Input:** Singmaster notation (stdin)
 - **Output:** Move sequence (stdout)
 
-### 2. **Python Integration** (`twophase_solver.py`)
+### 2. **Python Integration** (`solver.py`)
 - Bridges Python GUI to C++ solver
 - Handles subprocess communication
 - Simplifies move sequences

@@ -1,4 +1,4 @@
-from twophase_solver import solve_state, is_twophase_available
+from solver import solve_state, is_twophase_available
 from collections import deque
 from pygame.locals import *
 from OpenGL.GLU import *

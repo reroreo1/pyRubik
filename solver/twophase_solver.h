@@ -21,8 +21,8 @@ ALGORITHM OVERVIEW:
     5. Return optimal solution (typically 20-23 moves)
 
 CONFIGURATION:
-    - MAX_MOVES: Hard limit on solution length (50 moves)
-    - target_length: Target solution (45 moves typical)
+    - MAX_MOVES: Hard limit on solution length (30 moves)
+    - target_length: Target solution (30 moves typical)
     - phase2limit: Node expansion limit to prevent infinite search
     - axesmask: Which orientations to search (default: all 6)
 
@@ -42,7 +42,7 @@ FUNCTIONS:
 // Global configuration values for the twophase solver.
 
 // Compile‑time limits used for static array sizes.
-#define MAX_MOVES   50           // Hard upper bound on move count
+#define MAX_MOVES   30           // Hard upper bound on move count
 
 extern const int target_length;       // Target maximum solution length
 extern const long long phase2limit;   // Limit on phase 2 node expansions

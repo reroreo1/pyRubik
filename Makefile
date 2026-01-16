@@ -8,13 +8,8 @@ all: solver
 
 # Install Python dependencies
 install:
-	@if [ ! -d "env" ]; then \
-		echo "Creating Python virtual environment in ./env..."; \
-		python3 -m venv env; \
-	fi
 	@echo "Installing Python dependencies into ./env..."
-	. ./env/bin/activate && pip install -r requirements.txt
-	@echo "✓ Python dependencies installed in ./env"
+	pip install -r requirements.txt
 
 # Build the C++ solver
 solver:
@@ -53,5 +48,7 @@ help:
 	@echo "  make help       - Show this help message"
 	@echo ""
 	@echo "Quick start:"
+	@echo "  python3 -m venv env    # Create virtual environment"
+	@echo "  source env/bin/activate    # Activate virtual environment"
 	@echo "  make setup    # One-time setup"
-	@echo "  python3 cub3D.py  # Run the app"
+	@echo "  make run  # Run the app"
