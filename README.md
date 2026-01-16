@@ -1,4 +1,4 @@
-<h1 align="center"> Rubik Cube </h1>
+<h1 align="center"> Rubik's Cube </h1>
 
 <img src="https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExdzZkYjNrOG44dDNwY3Vubjcyamo0eXRtOXJwMjN4MXRuMGwxcml5dSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/2CV88JdrUCOYT5Ec8j/giphy.gif" alt="Rubik Cube Demo" width="1000" height="800"/>
 A 3D Rubik's Cube visualizer and solver using OpenGL, Pygame, and Kociemba's two-phase algorithm.
