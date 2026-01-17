@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kociemba Algorithm Explained</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #764ba2;
+            margin-top: 30px;
+        }
+        .section {
+            margin: 25px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 5px solid #667eea;
+        }
+        .cube-face {
+            display: inline-grid;
+            grid-template-columns: repeat(3, 40px);
+            grid-template-rows: repeat(3, 40px);
+            gap: 3px;
+            margin: 10px;
+            padding: 10px;
+            background: #333;
+            border-radius: 5px;
+        }
+        .sticker {
+            width: 40px;
+            height: 40px;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+            color: #333;
+        }
+        .white { background: #fff; }
+        .yellow { background: #ffd700; }
+        .red { background: #ff3333; }
+        .orange { background: #ff8c00; }
+        .blue { background: #4169e1; color: white; }
+        .green { background: #00cc00; }
+        
+        .graph {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .node {
+            fill: #667eea;
+            stroke: #333;
+            stroke-width: 2;
+        }
+        .node.goal {
+            fill: #00cc00;
+        }
+        .node.pruned {
+            fill: #ff3333;
+        }
+        .edge {
+            stroke: #999;
+            stroke-width: 2;
+            fill: none;
+        }
+        .arrow {
+            fill: #999;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        th {
+            background: #667eea;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        .highlight {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #ffc107;
+            margin: 15px 0;
+        }
+        .code {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            background: #e9ecef;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            background: #667eea;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎲 Understanding the Kociemba Two-Phase Algorithm</h1>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('basics')">Basics</button>
+            <button class="tab" onclick="showTab('subgroup')">Kociemba Subgroup</button>
+            <button class="tab" onclick="showTab('pruning')">Pruning Tables</button>
+            <button class="tab" onclick="showTab('ida')">IDA* Search</button>
+        </div>
+
+        <div id="basics" class="tab-content active">
+            <h2>1. What is Permutation?</h2>
+            <div class="section">
+                <p><strong>Permutation</strong> = The arrangement/position of pieces</p>
+                <p>A Rubik's Cube has:</p>
+                <ul>
+                    <li><strong>8 corner pieces</strong> (each has 3 colors)</li>
+                    <li><strong>12 edge pieces</strong> (each has 2 colors)</li>
+                </ul>
+                
+                <div class="highlight">
+                    <strong>Example:</strong> Imagine 3 numbered blocks: [1, 2, 3]
+                    <br>Different permutations: [1,2,3], [2,1,3], [3,2,1], etc.
+                    <br>Total permutations: 3! = 6 ways
+                </div>
+
+                <p><strong>For Rubik's Cube:</strong></p>
+                <ul>
+                    <li>Corner permutations: 8! = 40,320 ways</li>
+                    <li>Edge permutations: 12! = 479,001,600 ways</li>
+                    <li>Corner orientations: 3^8 = 6,561 ways</li>
+                    <li>Edge orientations: 2^12 = 4,096 ways</li>
+                </ul>
+                
+                <div class="highlight">
+                    <strong>Total positions:</strong> ~43 quintillion (43,252,003,274,489,856,000)
+                    <br>That's why we need smart algorithms like Kociemba's!
+                </div>
+            </div>
+
+            <h2>2. Cube State Representation</h2>
+            <div class="section">
+                <p>A solved cube (one face shown):</p>
+                <div class="cube-face">
+                    <div class="sticker white"></div>
+                    <div class="sticker white"></div>
+                    <div class="sticker white"></div>
+                    <div class="sticker white"></div>
+                    <div class="sticker white"></div>
+                    <div class="sticker white"></div>
+                    <div class="sticker white"></div>
+                    <div class="sticker white"></div>
+                    <div class="sticker white"></div>
+                </div>
+                
+                <p>A scrambled cube (showing misoriented pieces):</p>
+                <div class="cube-face">
+                    <div class="sticker red"></div>
+                    <div class="sticker white"></div>
+                    <div class="sticker blue"></div>
+                    <div class="sticker yellow"></div>
+                    <div class="sticker white"></div>
+                    <div class="sticker green"></div>
+                    <div class="sticker orange"></div>
+                    <div class="sticker white"></div>
+                    <div class="sticker red"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="subgroup" class="tab-content">
+            <h2>The Kociemba Subgroup (G1)</h2>
+            <div class="section">
+                <p><strong>Key Concept:</strong> The Kociemba subgroup is a special subset of cube states where:</p>
+                
+                <div class="highlight">
+                    <strong>✓ All edges are oriented correctly</strong> (can be solved without disturbing orientation)
+                    <br><strong>✓ All corners are oriented correctly</strong>
+                    <br><strong>✗ Pieces may still be in wrong positions (permuted)</strong>
+                </div>
+
+                <h3>Visual Analogy:</h3>
+                <p>Imagine a bookshelf where:</p>
+                <ul>
+                    <li><strong>Full cube (G0):</strong> Books are upside down AND in wrong order (43 quintillion states)</li>
+                    <li><strong>Kociemba subgroup (G1):</strong> Books are right-side up, but in wrong order (~19 million states)</li>
+                    <li><strong>Solved (G2):</strong> Books are right-side up AND in correct order (1 state)</li>
+                </ul>
+
+                <h3>Why This Matters:</h3>
+                <table>
+                    <tr>
+                        <th>Group</th>
+                        <th>State Count</th>
+                        <th>What's Fixed</th>
+                        <th>What Can Change</th>
+                    </tr>
+                    <tr>
+                        <td>G0 (Full Cube)</td>
+                        <td>~43 quintillion</td>
+                        <td>Nothing</td>
+                        <td>Everything</td>
+                    </tr>
+                    <tr>
+                        <td>G1 (Kociemba)</td>
+                        <td>~19 million</td>
+                        <td>All orientations</td>
+                        <td>Positions only</td>
+                    </tr>
+                    <tr>
+                        <td>G2 (Solved)</td>
+                        <td>1</td>
+                        <td>Everything</td>
+                        <td>Nothing</td>
+                    </tr>
+                </table>
+
+                <div class="code">
+// In Phase 1: Fix orientations (G0 → G1)
+// Can use all 18 moves: R, R', R2, L, L', L2, F, F', F2, etc.
+
+// In Phase 2: Fix permutations (G1 → G2)
+// Limited to 10 moves that preserve orientation:
+// R2, L2, F2, B2, U, U', U2, D, D', D2
+                </div>
+            </div>
+        </div>
+
+        <div id="pruning" class="tab-content">
+            <h2>Pruning Tables Explained</h2>
+            <div class="section">
+                <p><strong>What are pruning tables?</strong></p>
+                <p>Pre-computed databases that store the <em>minimum number of moves</em> needed to reach the goal from any state.</p>
+
+                <h3>Example Pruning Table (simplified):</h3>
+                <table>
+                    <tr>
+                        <th>Cube State ID</th>
+                        <th>Min Moves to G1</th>
+                        <th>Meaning</th>
+                    </tr>
+                    <tr>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>Already in G1 (solved orientation)</td>
+                    </tr>
+                    <tr>
+                        <td>1234</td>
+                        <td>3</td>
+                        <td>Need at least 3 moves to reach G1</td>
+                    </tr>
+                    <tr>
+                        <td>5678</td>
+                        <td>7</td>
+                        <td>Need at least 7 moves to reach G1</td>
+                    </tr>
+                    <tr>
+                        <td>9012</td>
+                        <td>12</td>
+                        <td>Need at least 12 moves to reach G1</td>
+                    </tr>
+                </table>
+
+                <h3>How Pruning Works in IDA*:</h3>
+                <div class="highlight">
+                    <strong>Scenario:</strong> You're searching with depth limit = 5 moves
+                    <br><strong>Current state:</strong> You've used 2 moves
+                    <br><strong>Pruning table says:</strong> This state needs minimum 7 moves to goal
+                    <br><br>
+                    <strong>Logic:</strong> 2 (used) + 7 (minimum needed) = 9 moves total
+                    <br><strong>Decision:</strong> 9 > 5 limit → PRUNE THIS BRANCH! ✂️
+                    <br><br>
+                    <strong>Result:</strong> Saves exploring millions of useless positions!
+                </div>
+
+                <h3>What's Stored in .dat Files:</h3>
+                <div class="code">
+// phase1_edges.dat
+// Maps edge orientation states to minimum moves
+State 0:        0 moves  (oriented correctly)
+State 1:        1 move   (one quarter turn away)
+State 2048:     7 moves  
+...
+State 4095:     12 moves (maximum for edges)
+
+// phase1_corners.dat  
+// Maps corner orientation states to minimum moves
+State 0:        0 moves
+State 1:        2 moves
+...
+
+// phase2_permutation.dat
+// Maps permutation states to minimum moves
+// Much larger file (~40 MB typical)
+                </div>
+
+                <h3>Building vs Loading:</h3>
+                <ul>
+                    <li><strong>First run:</strong> Compute tables (takes 10+ minutes) → Save to .dat files</li>
+                    <li><strong>Subsequent runs:</strong> Load from .dat files (takes 1 second)</li>
+                    <li><strong>skipwrite flag:</strong> If set, don't save (useful for testing)</li>
+                </ul>
+            </div>
+        </div>
+
+        <div id="ida" class="tab-content">
+            <h2>IDA* Search Visualization</h2>
+            <div class="section">
+                <h3>Search Tree Example:</h3>
+                <svg class="graph" width="800" height="400" viewBox="0 0 800 400">
+                    <!-- Depth 0 -->
+                    <circle class="node" cx="400" cy="50" r="20"/>
+                    <text x="400" y="55" text-anchor="middle" fill="white" font-weight="bold">Start</text>
+                    <text x="400" y="90" text-anchor="middle" font-size="12">h=7</text>
+                    
+                    <!-- Depth 1 -->
+                    <line class="edge" x1="400" y1="70" x2="200" y2="130"/>
+                    <line class="edge" x1="400" y1="70" x2="400" y2="130"/>
+                    <line class="edge" x1="400" y1="70" x2="600" y2="130"/>
+                    
+                    <circle class="node" cx="200" cy="150" r="20"/>
+                    <text x="200" y="155" text-anchor="middle" fill="white">R</text>
+                    <text x="200" y="190" text-anchor="middle" font-size="12">g=1, h=6</text>
+                    
+                    <circle class="node" cx="400" cy="150" r="20"/>
+                    <text x="400" y="155" text-anchor="middle" fill="white">U</text>
+                    <text x="400" y="190" text-anchor="middle" font-size="12">g=1, h=7</text>
+                    
+                    <circle class="node pruned" cx="600" cy="150" r="20"/>
+                    <text x="600" y="155" text-anchor="middle" fill="white">F</text>
+                    <text x="600" y="190" text-anchor="middle" font-size="12">g=1, h=8</text>
+                    <text x="600" y="210" text-anchor="middle" font-size="11" fill="#ff3333" font-weight="bold">PRUNED!</text>
+                    
+                    <!-- Depth 2 from R -->
+                    <line class="edge" x1="200" y1="170" x2="100" y2="230"/>
+                    <line class="edge" x1="200" y1="170" x2="200" y2="230"/>
+                    
+                    <circle class="node" cx="100" cy="250" r="20"/>
+                    <text x="100" y="255" text-anchor="middle" fill="white">R U</text>
+                    <text x="100" y="290" text-anchor="middle" font-size="12">g=2, h=5</text>
+                    
+                    <circle class="node goal" cx="200" cy="250" r="20"/>
+                    <text x="200" y="255" text-anchor="middle" fill="white">R F</text>
+                    <text x="200" y="290" text-anchor="middle" font-size="12">g=2, h=4</text>
+                    
+                    <!-- Legend -->
+                    <g transform="translate(50, 330)">
+                        <text x="0" y="0" font-weight="bold">Legend:</text>
+                        <circle class="node" cx="10" cy="20" r="8"/>
+                        <text x="25" y="25" font-size="12">Explored</text>
+                        
+                        <circle class="node pruned" cx="100" cy="20" r="8"/>
+                        <text x="115" y="25" font-size="12">Pruned (f > limit)</text>
+                        
+                        <circle class="node goal" cx="250" cy="20" r="8"/>
+                        <text x="265" y="25" font-size="12">Goal/Best</text>
+                    </g>
+                    
+                    <g transform="translate(450, 330)">
+                        <text x="0" y="0" font-size="12">g = moves used so far</text>
+                        <text x="0" y="20" font-size="12">h = minimum moves needed (from pruning table)</text>
+                        <text x="0" y="40" font-size="12">f = g + h (total estimated cost)</text>
+                    </g>
+                </svg>
+
+                <h3>IDA* Algorithm Step-by-Step:</h3>
+                <div class="code">
+<strong>Iteration 1:</strong> limit = 0
+  Check start state → not solved → increase limit
+
+<strong>Iteration 2:</strong> limit = 7 (from pruning table)
+  Start (g=0, h=7) → f=7, within limit
+    Try R (g=1, h=6) → f=7, explore
+      Try R-U (g=2, h=5) → f=7, explore
+        Try R-U-R (g=3, h=4) → f=7, explore
+          ... continues ...
+    Try U (g=1, h=7) → f=8, PRUNE! (8 > 7)
+    Try F (g=1, h=8) → f=9, PRUNE! (9 > 7)
+  
+  No solution found → increase limit
+
+<strong>Iteration 3:</strong> limit = 8
+  Search continues with larger limit...
+  Eventually finds solution!
+                </div>
+
+                <h3>Key Advantages:</h3>
+                <ul>
+                    <li><strong>Memory efficient:</strong> Only stores current path (not entire tree)</li>
+                    <li><strong>Optimal:</strong> Finds shortest solution (if heuristic is admissible)</li>
+                    <li><strong>Pruning power:</strong> Eliminates billions of useless states</li>
+                </ul>
+
+                <div class="highlight">
+                    <strong>Without pruning:</strong> Would need to explore ~10^19 states
+                    <br><strong>With pruning:</strong> Typically explores only ~1 million states
+                    <br><strong>Speedup:</strong> Over 10 trillion times faster! 🚀
+                </div>
+            </div>
+        </div>
+
+        <h2>Complete Algorithm Flow</h2>
+        <div class="section">
+            <svg width="100%" height="300" viewBox="0 0 900 300">
+                <!-- Phase 1 -->
+                <rect x="50" y="50" width="200" height="80" fill="#667eea" rx="10"/>
+                <text x="150" y="80" text-anchor="middle" fill="white" font-weight="bold">PHASE 1</text>
+                <text x="150" y="100" text-anchor="middle" fill="white" font-size="14">IDA* Search</text>
+                <text x="150" y="115" text-anchor="middle" fill="white" font-size="12">Fix orientations</text>
+                
+                <text x="150" y="150" text-anchor="middle" font-size="11">43 quintillion → 19 million</text>
+                <text x="150" y="165" text-anchor="middle" font-size="11">All 18 moves allowed</text>
+                
+                <!-- Arrow -->
+                <path d="M 260 90 L 340 90" stroke="#333" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+                <text x="300" y="85" text-anchor="middle" font-size="12" fill="#00cc00" font-weight="bold">Reach G1</text>
+                
+                <!-- Phase 2 -->
+                <rect x="350" y="50" width="200" height="80" fill="#764ba2" rx="10"/>
+                <text x="450" y="80" text-anchor="middle" fill="white" font-weight="bold">PHASE 2</text>
+                <text x="450" y="100" text-anchor="middle" fill="white" font-size="14">Pruned Search</text>
+                <text x="450" y="115" text-anchor="middle" fill="white" font-size="12">Fix permutations</text>
+                
+                <text x="450" y="150" text-anchor="middle" font-size="11">19 million → 1 (solved!)</text>
+                <text x="450" y="165" text-anchor="middle" font-size="11">Only 10 moves allowed</text>
+                
+                <!-- Arrow -->
+                <path d="M 560 90 L 640 90" stroke="#333" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+                <text x="600" y="85" text-anchor="middle" font-size="12" fill="#00cc00" font-weight="bold">SOLVED!</text>
+                
+                <!-- Solved -->
+                <circle cx="680" cy="90" r="40" fill="#00cc00"/>
+                <text x="680" y="95" text-anchor="middle" fill="white" font-size="30">✓</text>
+                
+                <!-- Define arrowhead -->
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                        <polygon points="0 0, 10 3, 0 6" fill="#333"/>
+                    </marker>
+                </defs>
+                
+                <!-- Stats box -->
+                <rect x="50" y="200" width="650" height="80" fill="#f8f9fa" stroke="#ddd" stroke-width="2" rx="5"/>
+                <text x="375" y="225" text-anchor="middle" font-weight="bold" font-size="16">Typical Performance</text>
+                <text x="375" y="245" text-anchor="middle" font-size="13">Solution length: 18-22 moves</text>
+                <text x="375" y="260" text-anchor="middle" font-size="13">Search time: 0.01 - 1 second</text>
+                <text x="375" y="275" text-anchor="middle" font-size="13">States explored: ~1 million (vs. 43 quintillion without pruning!)</text>
+            </svg>
+        </div>
+    </div>
+
+    <script>
+        function showTab(tabName) {
+            // Hide all tab contents
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => content.classList.remove('active'));
+            
+            // Remove active from all tabs
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+            
+            // Mark selected tab as active
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>

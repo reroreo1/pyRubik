@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kociemba Implementation Deep Dive</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #764ba2;
+            margin-top: 30px;
+        }
+        .section {
+            margin: 25px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 5px solid #667eea;
+        }
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            margin: 15px 0;
+            position: relative;
+        }
+        .code-comment {
+            color: #6a9955;
+        }
+        .code-keyword {
+            color: #569cd6;
+        }
+        .code-function {
+            color: #dcdcaa;
+        }
+        .code-number {
+            color: #b5cea8;
+        }
+        .code-string {
+            color: #ce9178;
+        }
+        .highlight-box {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #ffc107;
+            margin: 15px 0;
+        }
+        .step-box {
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .step-number {
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .visual-flow {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .flow-step {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .variable-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        .variable-table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        .variable-table td {
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+        .variable-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .tab {
+            padding: 10px 20px;
+            background: #e9ecef;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            background: #667eea;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .orientation-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .orientation-card {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+        .orientation-card.active {
+            border-color: #00cc00;
+            background: #e8f5e9;
+        }
+        .orientation-card.pruned {
+            border-color: #ff3333;
+            background: #ffebee;
+            opacity: 0.6;
+        }
+        .search-tree {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+        .tree-node {
+            margin: 5px 0;
+            padding: 5px;
+        }
+        .tree-node.explored {
+            color: #2196F3;
+        }
+        .tree-node.pruned {
+            color: #999;
+            text-decoration: line-through;
+        }
+        .tree-node.solution {
+            color: #00cc00;
+            font-weight: bold;
+        }
+        .inline-code {
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            color: #d63384;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Kociemba Implementation - Code Walkthrough</h1>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('overview')">Overview</button>
+            <button class="tab" onclick="showTab('solve')">solve() Function</button>
+            <button class="tab" onclick="showTab('phase1')">Phase 1 Search</button>
+            <button class="tab" onclick="showTab('phase2')">Phase 2 Search</button>
+            <button class="tab" onclick="showTab('variables')">Key Variables</button>
+        </div>
+
+        <div id="overview" class="tab-content active">
+            <h2>Big Picture: What the Code Does</h2>
+            
+            <div class="visual-flow">
+                <h3>Complete Execution Flow</h3>
+                <div class="flow-step">
+                    <strong>1. Setup (solve function start)</strong><br>
+                    → Create 6 different cube orientations (like looking at cube from 6 angles)<br>
+                    → Calculate how hard each orientation is to solve<br>
+                    → Remove duplicate/symmetric orientations
+                </div>
+                
+                <div class="flow-step">
+                    <strong>2. Iterative Deepening Loop</strong><br>
+                    → Try to solve in d=0 moves, then d=1, d=2, ..., until solution found<br>
+                    → For each depth, try all valid orientations
+                </div>
+                
+                <div class="flow-step">
+                    <strong>3. Phase 1 IDA* (solve_phase1)</strong><br>
+                    → Try every possible move (R, U, F, L, D, B and their variants)<br>
+                    → Use pruning table to skip hopeless branches<br>
+                    → When orientation is fixed → jump to Phase 2
+                </div>
+                
+                <div class="flow-step">
+                    <strong>4. Phase 2 Solver (solve_phase2)</strong><br>
+                    → Check pruning table for permutation distance<br>
+                    → Call specialized Phase 2 solver<br>
+                    → If better solution found → save it
+                </div>
+                
+                <div class="flow-step">
+                    <strong>5. Solution Found!</strong><br>
+                    → Convert moves back to original orientation<br>
+                    → Verify solution works<br>
+                    → Display to user
+                </div>
+            </div>
+
+            <div class="highlight-box">
+                <strong>Key Insight:</strong> The code searches from 6 different "views" of the cube simultaneously, using each view's pruning table to find the fastest solution. It's like having 6 people solve the same puzzle from different angles and taking the best answer.
+            </div>
+        </div>
+
+        <div id="solve" class="tab-content">
+            <h2>The solve() Function - Setting Up the Search</h2>
+            
+            <div class="section">
+                <h3>Step 1: Initialize Variables</h3>
+                <div class="code-block">
+<span class="code-keyword">void</span> <span class="code-function">TwophaseSolver::solve</span>(<span class="code-keyword">int</span> seqarg, cubepos& cp) {
+    pos = cp;               <span class="code-comment">// Store the scrambled cube</span>
+    phase2probes = <span class="code-number">0</span>;      <span class="code-comment">// Counter for phase 2 attempts</span>
+    bestsol = MAX_MOVES;    <span class="code-comment">// Best solution so far (start at 30)</span>
+    finished = <span class="code-number">0</span>;          <span class="code-comment">// Flag: have we found good enough solution?</span>
+    seq = seqarg;           <span class="code-comment">// Move encoding type</span>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Step 2: Build 6 Cube Orientations</h3>
+                <div class="highlight-box">
+                    <strong>Why 6 orientations?</strong><br>
+                    Imagine holding a cube: you can rotate it to look at it from different faces (X, Y, Z axes),
+                    and you can also look at the "inverse" (mirror) version. That's 3 axes × 2 = 6 ways.
+                </div>
+
+                <div class="code-block">
+minmindepth = MAX_MOVES;
+cubepos cpi, cp2;
+pos.<span class="code-function">invert_into</span>(cpi);    <span class="code-comment">// Create inverse (mirror) of cube</span>
+<span class="code-keyword">int</span> ind = <span class="code-number">0</span>;
+
+<span class="code-keyword">for</span> (<span class="code-keyword">int</span> inv = <span class="code-number">0</span>; inv < <span class="code-number">2</span>; ++inv) {        <span class="code-comment">// 0=normal, 1=inverted</span>
+    <span class="code-keyword">for</span> (<span class="code-keyword">int</span> mm = <span class="code-number">0</span>; mm < <span class="code-number">3</span>; ++mm, ++ind) { <span class="code-comment">// 3 axes (X, Y, Z)</span>
+        <span class="code-keyword">int</span> m = CUBE_SYMM * mm;
+        
+        <span class="code-comment">// Remap cube to this orientation</span>
+        <span class="code-keyword">if</span> (inv) {
+            cpi.<span class="code-function">remap_into</span>(m, cp2);
+        } <span class="code-keyword">else</span> {
+            pos.<span class="code-function">remap_into</span>(m, cp2);
+        }
+        
+        cp6[ind] = cp2;                      <span class="code-comment">// Store cube position</span>
+        kc6[ind] = <span class="code-function">CubeSymmetry</span>(cp2);       <span class="code-comment">// Store symmetry coordinates</span>
+        pc6[ind] = <span class="code-function">permcube</span>(cp2);          <span class="code-comment">// Store permutation</span>
+        mindepth[ind] = phase1::<span class="code-function">lookup</span>(kc6[ind]); <span class="code-comment">// Check pruning table!</span>
+                </div>
+
+                <div class="orientation-grid">
+                    <div class="orientation-card">
+                        <strong>Orient 0</strong><br>
+                        Normal, X-axis<br>
+                        mindepth: 7
+                    </div>
+                    <div class="orientation-card">
+                        <strong>Orient 1</strong><br>
+                        Normal, Y-axis<br>
+                        mindepth: 8
+                    </div>
+                    <div class="orientation-card active">
+                        <strong>Orient 2</strong><br>
+                        Normal, Z-axis<br>
+                        mindepth: 5 ✓
+                    </div>
+                    <div class="orientation-card">
+                        <strong>Orient 3</strong><br>
+                        Inverted, X-axis<br>
+                        mindepth: 9
+                    </div>
+                    <div class="orientation-card pruned">
+                        <strong>Orient 4</strong><br>
+                        Inverted, Y-axis<br>
+                        DUPLICATE ✗
+                    </div>
+                    <div class="orientation-card">
+                        <strong>Orient 5</strong><br>
+                        Inverted, Z-axis<br>
+                        mindepth: 6
+                    </div>
+                </div>
+
+                <p><strong>Result:</strong> Orient 2 has minimum depth of 5, so we'll start searching at depth 5.</p>
+            </div>
+
+            <div class="section">
+                <h3>Step 3: Remove Symmetric Duplicates</h3>
+                <div class="code-block">
+<span class="code-comment">// Don't search the same cube state twice under different symmetries</span>
+<span class="code-keyword">for</span> (<span class="code-keyword">int</span> i = <span class="code-number">0</span>; i < ind; ++i) {
+    <span class="code-keyword">if</span> (uniq[i] && kccanon6[ind] == kccanon6[i] &&
+        <span class="code-function">cubes_equal_up_to_symmetry</span>(cp6[ind], cp6[i])) {
+        uniq[ind] = <span class="code-number">0</span>;  <span class="code-comment">// Mark as duplicate, don't search</span>
+        <span class="code-keyword">break</span>;
+    }
+}
+                </div>
+
+                <div class="highlight-box">
+                    <strong>Why remove duplicates?</strong><br>
+                    Some orientations are actually the same puzzle due to cube symmetry. 
+                    For example, rotating a solved cube 90° gives you the same solved state.
+                    No point searching the same thing twice!
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Step 4: Iterative Deepening Search</h3>
+                <div class="code-block">
+<span class="code-comment">// Try depth = minmindepth, then minmindepth+1, minmindepth+2, ...</span>
+<span class="code-keyword">for</span> (<span class="code-keyword">int</span> d = minmindepth; d < bestsol && !finished; ++d) {
+    <span class="code-keyword">for</span> (curm = <span class="code-number">0</span>; curm < <span class="code-number">6</span>; ++curm) {  <span class="code-comment">// Try each orientation</span>
+        <span class="code-keyword">if</span> (!uniq[curm]) <span class="code-keyword">continue</span>;      <span class="code-comment">// Skip duplicates</span>
+        <span class="code-keyword">if</span> (finished || d >= bestsol || d < mindepth[curm]) <span class="code-keyword">continue</span>;
+        
+        <span class="code-comment">// START PHASE 1 SEARCH!</span>
+        <span class="code-function">solve_phase1</span>(kc6[curm], pc6[curm], d, <span class="code-number">0</span>, ALLMOVEMASK, CANONSEQSTART);
+    }
+}
+                </div>
+
+                <div class="search-tree">
+<strong>Example Search Progression:</strong>
+
+Depth 5:
+  Orient 0: mindepth=7 → skip (need at least 7, only have 5)
+  Orient 2: mindepth=5 → SEARCH! ✓
+  Orient 3: mindepth=9 → skip
+  
+Depth 6:
+  Orient 0: mindepth=7 → skip
+  Orient 2: mindepth=5 → SEARCH! ✓
+  Orient 5: mindepth=6 → SEARCH! ✓
+  
+Depth 7:
+  Orient 0: mindepth=7 → SEARCH! ✓
+  Orient 2: already found solution in depth 6
+                </div>
+            </div>
+        </div>
+
+        <div id="phase1" class="tab-content">
+            <h2>Phase 1: The IDA* Search</h2>
+            
+            <div class="section">
+                <h3>Function Signature</h3>
+                <div class="code-block">
+<span class="code-keyword">void</span> <span class="code-function">solve_phase1</span>(
+    <span class="code-keyword">const</span> CubeSymmetry& kc,  <span class="code-comment">// Current cube symmetry state</span>
+    <span class="code-keyword">const</span> permcube& pc,       <span class="code-comment">// Current permutation</span>
+    <span class="code-keyword">int</span> togo,                <span class="code-comment">// Moves remaining (depth limit)</span>
+    <span class="code-keyword">int</span> sofar,               <span class="code-comment">// Moves used so far</span>
+    <span class="code-keyword">int</span> movemask,            <span class="code-comment">// Which moves are allowed</span>
+    <span class="code-keyword">int</span> canon)               <span class="code-comment">// Canonical sequence state</span>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Base Case: Reached Goal?</h3>
+                <div class="code-block">
+<span class="code-keyword">if</span> (togo == <span class="code-number">0</span>) {
+    <span class="code-keyword">if</span> (kc == identity_kc) {  <span class="code-comment">// Is cube in Kociemba subgroup (G1)?</span>
+        <span class="code-function">solve_phase2</span>(pc, sofar);  <span class="code-comment">// YES! Move to Phase 2</span>
+    }
+    <span class="code-keyword">return</span>;
+}
+                </div>
+
+                <div class="highlight-box">
+                    <strong>identity_kc</strong> = The state where all edges and corners are oriented correctly.
+                    This is the Kociemba subgroup (G1) - we've fixed orientations, now just need to fix positions!
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Recursive Case: Try Each Move</h3>
+                <div class="code-block">
+--togo;  <span class="code-comment">// One less move remaining</span>
+
+<span class="code-keyword">while</span> (!finished && movemask) {
+    <span class="code-keyword">int</span> mv = <span class="code-function">ffs</span>(movemask) - <span class="code-number">1</span>;  <span class="code-comment">// Get next valid move</span>
+    movemask &= movemask - <span class="code-number">1</span>;      <span class="code-comment">// Remove this move from mask</span>
+    
+    kc2 = kc;
+    kc2.<span class="code-function">move</span>(mv);  <span class="code-comment">// Apply the move</span>
+    
+    <span class="code-comment">// CHECK PRUNING TABLE!</span>
+    <span class="code-keyword">int</span> nd = phase1::<span class="code-function">lookup</span>(kc2, togo, newmovemask);
+    
+    <span class="code-keyword">if</span> (nd <= togo && (togo == nd || togo + nd >= <span class="code-number">5</span>)) {
+        <span class="code-comment">// This move is promising! Recurse...</span>
+        pc2 = pc;
+        pc2.<span class="code-function">move</span>(mv);
+        moves[sofar] = mv;
+        
+        <span class="code-function">solve_phase1</span>(kc2, pc2, togo, sofar + <span class="code-number">1</span>, 
+                     newmovemask & <span class="code-function">cs_mask</span>(new_canon), new_canon);
+    }
+    <span class="code-comment">// else: PRUNED! Don't search this branch</span>
+}
+                </div>
+
+                <div class="search-tree">
+<strong>Example Search Tree:</strong>
+
+<span class="tree-node explored">Start (togo=5, sofar=0)</span>
+  <span class="tree-node explored">├─ Try R: pruning says need 4 more → 0+1+4=5 ✓ EXPLORE</span>
+  <span class="tree-node explored">│  ├─ Try R U: pruning says need 3 more → 0+2+3=5 ✓ EXPLORE</span>
+  <span class="tree-node explored">│  │  ├─ Try R U R': pruning says need 2 more → 0+3+2=5 ✓</span>
+  <span class="tree-node solution">│  │  │  └─ R U R' F F' → REACHES G1! → Phase 2 ✓✓✓</span>
+  <span class="tree-node pruned">│  ├─ Try R D: pruning says need 6 more → 0+2+6=8 > 5 ✗ PRUNED</span>
+  <span class="tree-node pruned">├─ Try U: pruning says need 7 more → 0+1+7=8 > 5 ✗ PRUNED</span>
+  <span class="tree-node explored">├─ Try F: pruning says need 4 more → 0+1+4=5 ✓ EXPLORE</span>
+  ...
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>The Pruning Magic</h3>
+                <table class="variable-table">
+                    <tr>
+                        <th>Variable</th>
+                        <th>Value</th>
+                        <th>Meaning</th>
+                    </tr>
+                    <tr>
+                        <td><span class="inline-code">togo</span></td>
+                        <td>3</td>
+                        <td>We have 3 moves left to reach G1</td>
+                    </tr>
+                    <tr>
+                        <td><span class="inline-code">sofar</span></td>
+                        <td>4</td>
+                        <td>We've already used 4 moves</td>
+                    </tr>
+                    <tr>
+                        <td><span class="inline-code">nd</span> (from pruning table)</td>
+                        <td>5</td>
+                        <td>Pruning table says: "From this state, you need AT LEAST 5 moves to reach G1"</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Decision</strong></td>
+                        <td colspan="2">
+                            nd (5) > togo (3) → We don't have enough moves left! → <strong>PRUNE THIS BRANCH</strong>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div id="phase2" class="tab-content">
+            <h2>Phase 2: Solving Permutations</h2>
+            
+            <div class="section">
+                <div class="code-block">
+<span class="code-keyword">void</span> <span class="code-function">solve_phase2</span>(<span class="code-keyword">const</span> permcube& pc, <span class="code-keyword">int</span> sofar) {
+    ++phase2probes;  <span class="code-comment">// Count how many times we've tried Phase 2</span>
+    
+    <span class="code-comment">// Check pruning table for Phase 2</span>
+    <span class="code-keyword">int</span> d = phase2::<span class="code-function">lookup</span>(pc);
+    
+    <span class="code-keyword">if</span> (d + sofar < bestsol) {  <span class="code-comment">// Could this beat our best solution?</span>
+        <span class="code-comment">// Call the specialized Phase 2 solver</span>
+        moveseq ms = phase2::<span class="code-function">solve</span>(pc, bestsol - sofar - <span class="code-number">1</span>);
+        
+        <span class="code-keyword">if</span> (ms.<span class="code-function">size</span>() + sofar < bestsol && 
+            (!ms.<span class="code-function">empty</span>() || pc == identity_pc)) {
+            
+            <span class="code-comment">// FOUND A BETTER SOLUTION!</span>
+            bestsol = ms.<span class="code-function">size</span>() + sofar;
+            
+            <span class="code-comment">// Save the complete move sequence</span>
+            <span class="code-keyword">for</span> (size_t i = <span class="code-number">0</span>; i < ms.<span class="code-function">size</span>(); ++i) {
+                moves[sofar + i] = ms[i];
+            }
+            <span class="code-function">memcpy</span>(bestmoves, moves, bestsol);
+            solmap = curm;
+            
+            <span class="code-keyword">if</span> (bestsol <= target_length) {
+                finished = <span class="code-number">1</span>;  <span class="code-comment">// Good enough! Stop searching</span>
+            }
+        }
+    }
+}
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Example Phase 2 Execution</h3>
+                <div class="step-box">
+                    <span class="step-number">1</span>
+                    <strong>Reached G1 after 8 moves in Phase 1</strong><br>
+                    <span class="inline-code">sofar = 8</span>
+                </div>
+
+                <div class="step-box">
+                    <span class="step-number">2</span>
+                    <strong>Check Phase 2 pruning table</strong><br>
+                    <span class="inline-code">d = phase2::lookup(pc) = 11</span><br>
+                    "This permutation needs at least 11 moves to solve"
+                </div>
+
+                <div class="step-box">
+                    <span class="step-number">3</span>
+                    <strong>Can we beat current best?</strong><br>
+                    <span class="inline-code">d + sofar = 11 + 8 = 19</span><br>
+                    <span class="inline-code">bestsol = 30 (initial)</span><br>
+                    19 < 30 → YES! Worth trying
+                </div>
+
+                <div class="step-box">
+                    <span class="step-number">4</span>
+                    <strong>Call Phase 2 solver</strong><br>
+                    <span class="inline-code">ms = phase2::solve(pc, 21)</span><br>
+                    "Try to solve in at most 21 moves (30 - 8 - 1)"
+                </div>
+
+                <div class="step-box">
+                    <span class="step-number">5</span>
+                    <strong>Phase 2 returns solution</strong><br>
+                    <span class="inline-code">ms = [U2, R2, U, D2, F2, ...]</span> (12 moves)<br>
+                    Total: 8 (Phase 1) + 12 (Phase 2) = <strong>20 moves</strong>
+                </div>
+
+                <div class="step-box">
+                    <span class="step-number">6</span>
+                    <strong>Update best solution</strong><br>
+                    <span class="inline-code">bestsol = 20</span><br>
+                    Copy moves to <span class="inline-code">bestmoves[]</span><br>
+                    20 ≤ 45 (target) → Set <span class="inline-code">finished = 1</span>
+                </div>
+            </div>
+
+            <div class="highlight-box">
+                <strong>Phase 2 Difference:</strong> Phase 2 uses a different solver than Phase 1 because:
+                <ul>
+                    <li>Orientations are already fixed (simpler problem)</li>
+                    <li>Only 10 moves allowed (R2, L2, F2, B2, U, U2, U', D, D2, D')</li>
+                    <li>Smaller state space (~19 million vs 43 quintillion)</li>
+                    <li>Can use more aggressive pruning strategies</li>
+                </ul>
+            </div>
+        </div>
+
+        <div id="variables" class="tab-content">
+            <h2>Key Variables Explained</h2>
+            
+            <table class="variable-table">
+                <tr>
+                    <th>Variable</th>
+                    <th>Type</th>
+                    <th>Purpose</th>
+                </tr>
+                <tr>
+                    <td><span class="inline-code">cp6[6]</span></td>
+                    <td>cubepos[]</td>
+                    <td>6 different orientations of the scrambled cube</td>
+                </tr>
+                <tr>
+                    <td><span class="inline-code">kc6[6]</span></td>
+                    <td>CubeSymmetry[]</td>
+                    <td>Symmetry coordinates for each orientation (used by Phase 1)</td>
+                </tr>
+                <tr>
+                    <td><span class="inline-code">pc6[6]</span></td>
+                    <td>permcube[]</td>
+                    <td>Permutation representation for each orientation (used by Phase 2)</td>
+                </tr>
+                <tr>
+                    <td><span class="inline-code">mindepth[6]</span></td>
+                    <td>int[]</td>
+                    <td>Minimum moves to reach G1 for each orientation (from pruning table)</td>
+                </tr>
+                <tr>
+                    <td><span class="inline-code">uniq[6]</span></td>
+                    <td>char[]</td>
+                    <td>1 = search this orientation, 0 = skip (duplicate)</td>
+                </tr>
+                <tr>
+                    <td><span class="inline-code">minmindepth</span></td>
+                    <td>int</td>
+                    <td>Smallest value in mindepth[] - where to start iterative deepening</td>
+                </tr>
+                <tr>
+                    <td><span class="inline-code">bestsol</span></td>
+                    <td>int</td>
+                    <td>Length of best solution found so far (starts at 30)</td>
+                </tr>
+                <tr>
+                    <td><span class="inline-code">bestmoves[]</span></td>
+                    <td>unsigned char[]</td>
+                    <td>The actual move sequence of the best solution</td>
+                </tr>
+                <tr>
+                    <td><span class="inline-code">moves[]</span></td>
+                    <td>unsigned char[]</td>
+                    <td>Current move sequence being explored</td>
+                </tr>
+                <tr>
+                    <td><span class="inline-code">finished</span></td>
+                    <td>int</td>
+                    <td>Flag: 1 = found good enough solution, stop searching</td>
+                </tr>
+                <tr>
+                    <td><span class="inline-code">curm</span></td>
+                    <td>int</td>
+                    <td>Current orientation index (0-5) being searched</td>
+                </tr>
+                <tr>
+                    <td><span class="inline-code">solmap</span></td>
+                    <td>int</td>
+                    <td>Which orientation produced the best solution</td>
+                </tr>
+                <tr>
+                    <td><span class="inline-code">movemask</span></td>
+                    <td>int</td>
+                    <td>Bitmask of valid moves (prevents redundant moves like R R')</td>
+                </tr>
+                <tr>
+                    <td><span class="inline-code">togo</span></td>
+                    <td>int</td>
+                    <td>Moves remaining in current depth limit (counts down)</td>
+                </tr>
+                <tr>
+                    <td><span class="inline-code">sofar</span></td>
+                    <td>int</td>
+                    <td>Moves used so far in current search path (counts up)</td>
+                </tr>
+            </table>
+
+            <h3>Important Constants</h3>
+            <table class="variable-table">
+                <tr>
+                    <th>Constant</th>
+                    <th>Value</th>
+                    <th>Meaning</th>
+                </tr>
+                <tr>
+                    <td><span class="inline-code">MAX_MOVES</span></td>
+                    <td>30</td>
+                    <td>Hard limit on solution length (God's Number is 20)</td>
+                </tr>
+                <tr>
+                    <td><span class="inline-code">target_length</span></td>
+                    <td>45</td>
+                    <td>If solution ≤ 45 moves, stop searching (good enough)</td>
+                </tr>
+                <tr>
+                    <td><span class="inline-code">phase2limit</span></td>
+                    <td>Very large</td>
+                    <td>Max Phase 2 attempts before giving up</td>
+                </tr>
+                <tr>
+                    <td><span class="inline-code">axesmask</span></td>
+                    <td>63 (binary: 111111)</td>
+                    <td>Search all 6 orientations (all bits set)</td>
+                </tr>
+                <tr>
+                    <td><span class="inline-code">ALLMOVEMASK</span></td>
+                    <td>Bitmask</td>
+                    <td>All 18 moves allowed initially (R, R', R2, U, U', ...)</td>
+                </tr>
+                <tr>
+                    <td><span class="inline-code">identity_kc</span></td>
+                    <td>Special value</td>
+                    <td>Represents the Kociemba subgroup (orientations solved)</td>
+                </tr>
+            </table>
+
+            <h3>Pruning Table Functions</h3>
+            <div class="section">
+                <div class="code-block">
+<span class="code-comment">// Phase 1: Look up minimum moves to reach G1</span>
+<span class="code-keyword">int</span> depth = phase1::<span class="code-function">lookup</span>(kc);
+
+<span class="code-comment">// Phase 1 with move restrictions</span>
+<span class="code-keyword">int</span> depth = phase1::<span class="code-function">lookup</span>(kc, togo, newmovemask);
+
+<span class="code-comment">// Phase 2: Look up minimum moves to solve permutation</span>
+<span class="code-keyword">int</span> depth = phase2::<span class="code-function">lookup</span>(pc);
+
+<span class="code-comment">// Phase 2: Actually solve (not just lookup)</span>
+moveseq solution = phase2::<span class="code-function">solve</span>(pc, max_moves_allowed);
+                </div>
+            </div>
+        </div>
+
+        <h2>Complete Example Walkthrough</h2>
+        <div class="section">
+            <h3>Scrambled Cube: R U R' U' F D B</h3>
+            
+            <div class="step-box">
+                <span class="step-number">1</span>
+                <strong>Build 6 orientations</strong><br>
+                Orient 0: mindepth=8, Orient 1: mindepth=9, <strong>Orient 2: mindepth=6</strong> ✓<br>
+                Orient 3: mindepth=10, Orient 4: DUPLICATE, Orient 5: mindepth=7<br>
+                → <span class="inline-code">minmindepth = 6</span>
+            </div>
+
+            <div class="step-box">
+                <span class="step-number">2</span>
+                <strong>Depth 6: Try Orient 2</strong><br>
+                Call <span class="inline-code">solve_phase1(kc6[2], pc6[2], togo=6, sofar=0, ...)</span>
+            </div>
+
+            <div class="step-box">
+                <span class="step-number">3</span>
+                <strong>Phase 1 searches...</strong><br>
+                Try R → pruning says need 5 more → 6-1=5 available ✓ explore<br>
+                &nbsp;&nbsp;Try R U → pruning says need 4 more → 5-1=4 available ✓ explore<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;Try R U F → pruning says need 3 more → 4-1=3 available ✓ explore<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Try R U F R' → pruning says need 2 more → 3-1=2 available ✓ explore<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Try R U F R' U' → pruning says need 1 more → 2-1=1 available ✓<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Try R U F R' U' R → <strong>REACHES G1!</strong> ✓✓✓
+            </div>
+
+            <div class="step-box">
+                <span class="step-number">4</span>
+                <strong>Enter Phase 2</strong><br>
+                Call <span class="inline-code">solve_phase2(pc_after_6_moves, sofar=6)</span><br>
+                Phase 2 lookup: needs 8 more moves<br>
+                Phase 2 solve: finds solution in 7 moves: <span class="inline-code">U2 R2 D2 L2 U D' F2</span>
+            </div>
+
+            <div class="step-box">
+                <span class="step-number">5</span>
+                <strong>Solution found!</strong><br>
+                Phase 1: 6 moves → Phase 2: 7 moves → <strong>Total: 13 moves</strong><br>
+                <span class="inline-code">bestsol = 13</span>, <span class="inline-code">finished = 1</span>
+            </div>
+
+            <div class="step-box">
+                <span class="step-number">6</span>
+                <strong>Convert back to original orientation</strong><br>
+                Solution was found in Orient 2 (Z-axis rotation)<br>
+                Remap moves back to original view: <span class="inline-code">R U F R' U' R U2 R2 D2 L2 U D' F2</span>
+            </div>
+
+            <div class="step-box">
+                <span class="step-number">7</span>
+                <strong>Verify & display</strong><br>
+                Apply moves to cube → Check if solved ✓<br>
+                Output to user: <span class="inline-code">R U F R' U' R U2 R2 D2 L2 U D' F2</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showTab(tabName) {
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => content.classList.remove('active'));
+            
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>

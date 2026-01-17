@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pruning Table Generation Explained</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #764ba2;
+            margin-top: 30px;
+        }
+        .section {
+            margin: 25px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 5px solid #667eea;
+        }
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .comment {
+            color: #6a9955;
+        }
+        .keyword {
+            color: #569cd6;
+        }
+        .string {
+            color: #ce9178;
+        }
+        .number {
+            color: #b5cea8;
+        }
+        .highlight {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #ffc107;
+            margin: 15px 0;
+        }
+        .bfs-viz {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .depth-layer {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .depth-0 { background: #e8f5e9; }
+        .depth-1 { background: #fff9c4; }
+        .depth-2 { background: #ffe0b2; }
+        .depth-3 { background: #ffccbc; }
+        .step-box {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .step-number {
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        th {
+            background: #667eea;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        .inline-code {
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            color: #d63384;
+        }
+        .memory-layout {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .memory-cell {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 8px 12px;
+            margin: 3px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .tab {
+            padding: 10px 20px;
+            background: #e9ecef;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            background: #667eea;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .compare-box {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .compare-item {
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Pruning Table Generation - How Tables Are Built</h1>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('overview')">Overview</button>
+            <button class="tab" onclick="showTab('phase1gen')">Phase 1 Generation</button>
+            <button class="tab" onclick="showTab('phase2gen')">Phase 2 Generation</button>
+            <button class="tab" onclick="showTab('encoding')">Data Encoding</button>
+            <button class="tab" onclick="showTab('comparison')">Comparison</button>
+        </div>
+
+        <div id="overview" class="tab-content active">
+            <h2>What is Table Generation?</h2>
+            
+            <div class="highlight">
+                <strong>The Goal:</strong> Build a massive lookup table that tells us, for ANY cube state, 
+                the MINIMUM number of moves needed to reach the goal.
+                <br><br>
+                <strong>Method:</strong> Breadth-First Search (BFS) - start from the goal and work backwards,
+                marking every reachable state with its distance.
+            </div>
+
+            <div class="bfs-viz">
+                <h3>BFS Visualization</h3>
+                
+                <div class="depth-layer depth-0">
+                    <strong>Depth 0 (Goal State):</strong> 1 state
+                    <br>Solved cube: <span class="inline-code">distance = 0</span>
+                </div>
+
+                <div class="depth-layer depth-1">
+                    <strong>Depth 1:</strong> ~18 states
+                    <br>All cubes reachable with 1 move: R, R', R2, U, U', U2, F, F', F2, ...
+                    <br>Mark each: <span class="inline-code">distance = 1</span>
+                </div>
+
+                <div class="depth-layer depth-2">
+                    <strong>Depth 2:</strong> ~243 states
+                    <br>All cubes reachable with 2 moves from depth 1 states
+                    <br>Mark each: <span class="inline-code">distance = 2</span>
+                </div>
+
+                <div class="depth-layer depth-3">
+                    <strong>Depth 3:</strong> ~3,000+ states
+                    <br>Keep expanding...
+                    <br>Eventually covers ALL reachable states
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Key Differences Between Phase 1 and Phase 2</h3>
+                <table>
+                    <tr>
+                        <th>Aspect</th>
+                        <th>Phase 1</th>
+                        <th>Phase 2</th>
+                    </tr>
+                    <tr>
+                        <td><strong>Total States</strong></td>
+                        <td>~42 million (with symmetry reduction)</td>
+                        <td>~19 million</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Coordinates</strong></td>
+                        <td>Corner symmetry × Edge orientation × Edge permutation</td>
+                        <td>Corner coordinate × Edge coordinate</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Max Depth</strong></td>
+                        <td>12 moves</td>
+                        <td>18 moves</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Storage per Entry</strong></td>
+                        <td>4 bytes (distance + move hints)</td>
+                        <td>4 bits (distance only, packed)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Generation Time</strong></td>
+                        <td>~30 seconds</td>
+                        <td>~60 seconds</td>
+                    </tr>
+                    <tr>
+                        <td><strong>File Size</strong></td>
+                        <td>~10 MB</td>
+                        <td>~40 MB</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div id="phase1gen" class="tab-content">
+            <h2>Phase 1: gen_table() Breakdown</h2>
+
+            <div class="section">
+                <h3>High-Level Algorithm</h3>
+                <div class="code-block">
+<span class="keyword">void</span> phase1::gen_table() {
+    <span class="comment">// Step 1: Initialize all entries to 255 (unknown)</span>
+    memset(mem, -1, memsize);  <span class="comment">// -1 as unsigned char = 255</span>
+    
+    <span class="comment">// Step 2: Mark the solved state (index 0) as distance 0</span>
+    mem[0] = 0;
+    <span class="keyword">int</span> seen = 1;  <span class="comment">// Count of states we've marked</span>
+    
+    <span class="comment">// Step 3: BFS - for each depth level...</span>
+    <span class="keyword">for</span> (<span class="keyword">int</span> d = 1; ; d++) {
+        <span class="comment">// Process all states at depth d-1</span>
+        <span class="comment">// Apply all 18 moves</span>
+        <span class="comment">// Mark new states as depth d</span>
+        <span class="comment">// Stop when all states are marked</span>
+    }
+}
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Step-by-Step Walkthrough</h3>
+
+                <div class="step-box">
+                    <span class="step-number">1</span>
+                    <strong>Initialize Memory</strong>
+                    <div class="code-block">
+memset(mem, -1, memsize);  <span class="comment">// Set all bytes to 255 (unknown distance)</span>
+mem[0] = 0;                <span class="comment">// Solved state has distance 0</span>
+<span class="keyword">int</span> seen = 1;              <span class="comment">// We've marked 1 state so far</span>
+                    </div>
+                    <div class="memory-layout">
+                        <strong>Memory after initialization:</strong><br>
+                        <span class="memory-cell" style="background: #00cc00;">0</span>
+                        <span class="memory-cell">255</span>
+                        <span class="memory-cell">255</span>
+                        <span class="memory-cell">255</span>
+                        <span class="memory-cell">255</span>
+                        <span class="memory-cell">...</span>
+                        <span class="memory-cell">255</span>
+                    </div>
+                </div>
+
+                <div class="step-box">
+                    <span class="step-number">2</span>
+                    <strong>For Each Depth Level (d = 1, 2, 3, ...)</strong>
+                    <div class="code-block">
+<span class="keyword">for</span> (<span class="keyword">int</span> d = 1; ; d++) {
+    <span class="keyword">int</span> lastiter = (seen == CORNERRSYMM * EDGEOSYMM * EDGEPERM);
+    <span class="keyword">int</span> seek = d - 1;  <span class="comment">// Look for states at previous depth</span>
+    
+    <span class="comment">// Triple nested loop over all coordinates:</span>
+    <span class="comment">// - Corner symmetry (cs)</span>
+    <span class="comment">// - Edge orientation symmetry (eosymm)</span>
+    <span class="comment">// - Edge permutation symmetry (epsymm)</span>
+                    </div>
+                </div>
+
+                <div class="step-box">
+                    <span class="step-number">3</span>
+                    <strong>Iterate Over All Possible States</strong>
+                    <div class="code-block">
+<span class="keyword">for</span> (<span class="keyword">int</span> cs = 0; cs < CORNERRSYMM; cs++) {
+    <span class="keyword">int</span> csymm = CubeSymmetry::cornersymm_expand[cs];
+    
+    <span class="keyword">for</span> (<span class="keyword">int</span> eosymm = 0; eosymm < EDGEOSYMM; eosymm++)
+        <span class="keyword">for</span> (<span class="keyword">int</span> epsymm = 0; epsymm < EDGEPERM; epsymm++, at += BYTES_PER_ENTRY)
+            
+            <span class="comment">// Check if this state has distance = d-1</span>
+            <span class="keyword">if</span> (mem[at] == seek) {
+                <span class="comment">// Found a state at depth d-1!</span>
+                <span class="comment">// Try all 18 moves from here...</span>
+            }
+}
+                    </div>
+                    <p><strong>What's happening:</strong></p>
+                    <ul>
+                        <li><span class="inline-code">at</span> = current index in memory array</li>
+                        <li><span class="inline-code">mem[at]</span> = distance stored for this state</li>
+                        <li>If <span class="inline-code">mem[at] == seek (d-1)</span>, this state was marked in the previous iteration</li>
+                    </ul>
+                </div>
+
+                <div class="step-box">
+                    <span class="step-number">4</span>
+                    <strong>Apply All 18 Moves</strong>
+                    <div class="code-block">
+<span class="keyword">int</span> deltadist[NMOVES];  <span class="comment">// Store distance change for each move</span>
+
+<span class="keyword">for</span> (<span class="keyword">int</span> mv = 0; mv < NMOVES; mv++) {
+    <span class="keyword">int</span> rd = 0;
+    
+    <span class="comment">// Create a cube in current state</span>
+    CubeSymmetry kc(csymm, eosymm, epsymm);
+    
+    <span class="comment">// Apply move</span>
+    kc.move(mv);
+    
+    <span class="comment">// Get symmetry info for resulting state</span>
+    corner_mapinfo& cm = CubeSymmetry::cornersymm[kc.csymm];
+    
+    <span class="comment">// For each symmetry that gives canonical form...</span>
+    <span class="keyword">for</span> (<span class="keyword">int</span> m = cm.minmap; cm.minbits >> m; m++)
+        <span class="keyword">if</span> ((cm.minbits >> m) & 1) {
+            <span class="comment">// Calculate destination coordinates</span>
+            <span class="keyword">int</span> deosymm = CubeSymmetry::edgeomap[...][m];
+            <span class="keyword">int</span> depsymm = CubeSymmetry::edgepmap[...][m];
+            <span class="keyword">int</span> dat = ((cm.csymm * EDGEOSYMM + deosymm) * EDGEPERM + depsymm) * BYTES_PER_ENTRY;
+            
+            rd = mem[dat];
+            <span class="keyword">if</span> (rd == 255) {  <span class="comment">// Not visited yet!</span>
+                rd = d;         <span class="comment">// Mark with current depth</span>
+                mem[dat] = rd;
+                seen++;         <span class="comment">// Increment counter</span>
+            }
+        }
+    
+    deltadist[mv] = rd - seek;  <span class="comment">// Store relative distance change</span>
+}
+                    </div>
+                    <p><strong>Key Insight:</strong> This loop finds all states reachable in exactly <span class="inline-code">d</span> moves by applying all moves to all states at depth <span class="inline-code">d-1</span>.</p>
+                </div>
+
+                <div class="step-box">
+                    <span class="step-number">5</span>
+                    <strong>Encode Move Hints (Smart Part!)</strong>
+                    <div class="code-block">
+<span class="comment">// Store compressed move hints in bytes 1-3 of the entry</span>
+<span class="keyword">for</span> (<span class="keyword">int</span> b = 0; b < 3; b++) {  <span class="comment">// 3 bytes for hints</span>
+    <span class="keyword">int</span> v = 0;
+    
+    <span class="comment">// Process move groups (R/R'/R2, U/U'/U2, F/F'/F2, etc.)</span>
+    <span class="comment">// Each byte encodes hints for 6 moves</span>
+    
+    <span class="keyword">for</span> (<span class="keyword">int</span> c = clim; c >= 0; c--) {
+        <span class="keyword">int</span> vv = 0;
+        <span class="keyword">int</span> cnts[3];  <span class="comment">// Count moves that: decrease, stay same, increase distance</span>
+        
+        <span class="comment">// Check 3 moves in this group (e.g., R, R', R2)</span>
+        <span class="keyword">for</span> (<span class="keyword">int</span> t = 2; t >= 0; t--) {
+            vv = 2 * vv + deltadist[3 * b + 9 * c + t];
+            cnts[1 + deltadist[3 * b + 9 * c + t]]++;
+        }
+        
+        <span class="comment">// Encode whether moves decrease (-1), stay (0), or increase (+1) distance</span>
+        <span class="keyword">if</span> (cnts[0])
+            vv += 7;  <span class="comment">// Moves decrease distance</span>
+        <span class="keyword">else</span>
+            vv += 8;  <span class="comment">// Moves increase distance</span>
+        
+        v = 16 * v + vv;
+    }
+    
+    mem[at + b + 1] = v;  <span class="comment">// Store in bytes 1-3</span>
+}
+                    </div>
+                    <div class="highlight">
+                        <strong>Why Store Move Hints?</strong><br>
+                        During IDA* search, we can quickly check which moves are promising without recalculating!
+                        <br><br>
+                        Example: If we're at distance 7, and the hint says "move R decreases distance by 1", 
+                        we know applying R gives us a state at distance 6.
+                    </div>
+                </div>
+
+                <div class="step-box">
+                    <span class="step-number">6</span>
+                    <strong>Termination</strong>
+                    <div class="code-block">
+cout << <span class="string">"[phase1:"</span> << (d * 100 / 14) << <span class="string">"%]"</span> << endl;
+
+<span class="keyword">if</span> (lastiter)  <span class="comment">// All states marked?</span>
+    <span class="keyword">break</span>;
+                    </div>
+                    <p>Stops when <span class="inline-code">seen == total_states</span>, meaning all reachable states have been marked.</p>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Example: Depth 1 Iteration</h3>
+                <div class="memory-layout">
+                    <strong>Before depth 1:</strong><br>
+                    <span class="memory-cell" style="background: #00cc00;">0,0,0,0</span>
+                    <span class="memory-cell">255,?,?,?</span>
+                    <span class="memory-cell">255,?,?,?</span>
+                    <span class="memory-cell">...</span>
+                    <br><br>
+                    <strong>After depth 1 (applied all 18 moves to solved state):</strong><br>
+                    <span class="memory-cell" style="background: #00cc00;">0,0,0,0</span>
+                    <span class="memory-cell" style="background: #ffd700;">1,H,I,N</span>
+                    <span class="memory-cell" style="background: #ffd700;">1,H,I,N</span>
+                    <span class="memory-cell" style="background: #ffd700;">1,H,I,N</span>
+                    <span class="memory-cell">...</span>
+                    <span class="memory-cell" style="background: #ffd700;">1,H,I,N</span>
+                    <span class="memory-cell">255,?,?,?</span>
+                    <br><br>
+                    <small>Where: 1 = distance, H/I/N = move hints for bytes 1-3</small>
+                </div>
+            </div>
+        </div>
+
+        <div id="phase2gen" class="tab-content">
+            <h2>Phase 2: gen_table() Breakdown</h2>
+
+            <div class="section">
+                <h3>Key Differences from Phase 1</h3>
+                <ul>
+                    <li><strong>Packed storage:</strong> Only 4 bits per entry (vs 4 bytes)</li>
+                    <li><strong>Different coordinates:</strong> Corner + Edge coordinates (not symmetry)</li>
+                    <li><strong>Only G1 moves:</strong> 10 moves instead of 18</li>
+                    <li><strong>More complex iteration:</strong> Uses corner reduction table</li>
+                </ul>
+            </div>
+
+            <div class="section">
+                <h3>High-Level Structure</h3>
+                <div class="code-block">
+<span class="keyword">void</span> phase2::gen_table() {
+    <span class="comment">// Initialize all entries to 0xF (15 = unknown)</span>
+    memset(mem, 255, memsize);  <span class="comment">// Each byte holds two 4-bit entries</span>
+    
+    <span class="comment">// Mark solved state as distance 0</span>
+    mem[0] &= ~14;  <span class="comment">// Clear bits, leaving 0 (tricky bit manipulation!)</span>
+    
+    <span class="keyword">int</span> seen = 1;
+    
+    <span class="comment">// BFS for depths 0 through 14</span>
+    <span class="keyword">for</span> (<span class="keyword">int</span> d = 0; d < 15; d++) {
+        <span class="comment">// Process all states at depth d-1 or d=0</span>
+        <span class="comment">// Apply only G1 moves (10 moves that preserve orientation)</span>
+        <span class="comment">// Mark new states as depth d</span>
+    }
+}
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Step-by-Step Walkthrough</h3>
+
+                <div class="step-box">
+                    <span class="step-number">1</span>
+                    <strong>Setup and Initialization</strong>
+                    <div class="code-block">
+memset(mem, 255, memsize);  <span class="comment">// All entries = 0xFFFFFFFF</span>
+mem[0] &= ~14;              <span class="comment">// First entry: clear bits to make it 0x01</span>
+                    </div>
+                    <div class="highlight">
+                        <strong>Why the weird initialization?</strong><br>
+                        Phase 2 packs TWO entries per byte (4 bits each).<br>
+                        <span class="inline-code">255</span> in binary: <span class="inline-code">11111111</span> = two entries of <span class="inline-code">1111</span> (15)<br>
+                        Entry value 15 means "unknown distance"<br>
+                        Entry value 0 means "already solved" (but we add +1 when reading, so it becomes 1)
+                    </div>
+                </div>
+
+                <div class="step-box">
+                    <span class="step-number">2</span>
+                    <strong>Iterate Over Corner Coordinates</strong>
+                    <div class="code-block">
+<span class="keyword">for</span> (<span class="keyword">int</span> d = 0; d < 15; d++) {
+    <span class="keyword">unsigned int</span> seek = (d ? d - 1 : 1);  <span class="comment">// Special case for d=0</span>
+    <span class="keyword">int</span> newval = d;
+    
+    <span class="comment">// Triple loop over corner coordinates</span>
+    <span class="keyword">for</span> (<span class="keyword">int</span> c8_4 = 0; c8_4 < C8_4; c8_4++)      <span class="comment">// Which 4 corners on top</span>
+        <span class="keyword">for</span> (<span class="keyword">int</span> ctp = 0; ctp < FACT4; ctp++)    <span class="comment">// Top corner permutation</span>
+            <span class="keyword">for</span> (<span class="keyword">int</span> cbp = 0; cbp < FACT4; cbp++) {  <span class="comment">// Bottom corner permutation</span>
+                
+                <span class="comment">// Create permcube for this corner state</span>
+                permcube pc;
+                pc.c8_4 = c8_4;
+                pc.ctp = ctp;
+                pc.cbp = cbp;
+                
+                <span class="comment">// Get canonical corner representation</span>
+                <span class="keyword">int</span> oc = corner_coordinate(pc);
+                corner_reduce& cr = corner_reduction[oc];
+                
+                <span class="comment">// Process this corner state...</span>
+            }
+}
+                    </div>
+                </div>
+
+                <div class="step-box">
+                    <span class="step-number">3</span>
+                    <strong>Apply G1 Moves (Only 10 Moves)</strong>
+                    <div class="code-block">
+<span class="comment">// For each of the 18 moves...</span>
+<span class="keyword">for</span> (<span class="keyword">int</span> mv = 0; mv < NMOVES; mv++) {
+    <span class="comment">// Skip moves not in Kociemba group!</span>
+    <span class="keyword">if</span> (!CubeSymmetry::in_Kociemba_group(mv))
+        <span class="keyword">continue</span>;
+    
+    <span class="comment">// Apply move to permcube</span>
+    pc2 = pc;
+    pc2.move(mv);
+    
+    <span class="comment">// Get destination corner coordinate</span>
+    <span class="keyword">int</span> dest_off = corner_coordinate(pc2);
+    corner_reduce& cr2 = corner_reduction[dest_off];
+    
+    <span class="comment">// Process edge coordinates...</span>
+}
+                    </div>
+                    <div class="highlight">
+                        <strong>Kociemba Group Moves (G1):</strong><br>
+                        Only these 10 moves preserve orientation:<br>
+                        <span class="inline-code">R2, L2, F2, B2, U, U', U2, D, D', D2</span><br><br>
+                        Quarter turns on R, L, F, B would mess up corner/edge orientations!
+                    </div>
+                </div>
+
+                <div class="step-box">
+                    <span class="step-number">4</span>
+                    <strong>Nested Edge Loop (The Complex Part)</strong>
+                    <div class="code-block">
+<span class="comment">// For each edge configuration...</span>
+<span class="keyword">for</span> (<span class="keyword">int</span> e8_4 = 0; e8_4 < C8_4; e8_4++) {  <span class="comment">// Which 8 edges in UD slice</span>
+    <span class="keyword">int</span> et = permcube::c8_12[e8_4];  <span class="comment">// Top 8 edges</span>
+    
+    <span class="comment">// Apply move to edge permutations</span>
+    <span class="keyword">int</span> t1 = permcube::eperm_move[et][mv];
+    <span class="keyword">int</span> eb = ...;  <span class="comment">// Bottom edges (complementary set)</span>
+    <span class="keyword">int</span> t2 = permcube::eperm_move[eb][mv] & 31;
+    
+    <span class="comment">// Calculate destination</span>
+    <span class="keyword">int</span> dst1 = permcube::c12_8[t1 >> 5] * 24 * 24;
+    
+    <span class="keyword">for</span> (<span class="keyword">int</span> etp = 0; etp < FACT4; etp++)
+        <span class="keyword">for</span> (<span class="keyword">int</span> ebp = 0; ebp < FACT4; ebp++, at++) {
+            <span class="comment">// Skip if entire byte is 0xFF (optimization)</span>
+            <span class="keyword">if</span> (mem[off + (at >> 3)] == 0xffffffff) {
+                ebp += 7; at += 7;  <span class="comment">// Skip 8 entries at once</span>
+            }
+            <span class="comment">// Check if this edge config is at previous depth</span>
+            <span class="keyword">else if</span> (((mem[off + (at >> 3)] >> (4 * (at & 7))) & 0xf) == seek) {
+                <span class="comment">// Calculate destination edge coordinate</span>
+                <span class="keyword">int</span> etp1 = permcube::s4mul[etp][t1];
+                <span class="keyword">int</span> ebp1 = permcube::s4mul[ebp][t2];
+                <span class="keyword">int</span> dat = edgeud_remap[m][dst1 + etp1 * 24 + ebp1];
+                
+                <span class="comment">// Read current value at destination</span>
+                <span class="keyword">int</span> val = (mem[destat + (dat >> 3)] >> (4 * (dat & 7))) & 0xf;
+                
+                <span class="comment">// If unvisited (0xF), mark with current depth</span>
+                <span class="keyword">if</span> (val == 0xf) {
+                    mem[destat + (dat >> 3)] -= (0xf - newval) << (4 * (dat & 7));
+                    seen++;
+                }
+            }
+        }
+}
+                    </div>
+                </div>
+
+                <div class="step-box">
+                    <span class="step-number">5</span>
+                    <strong>Bit Manipulation for 4-bit Entries</strong>
+                    <div class="highlight">
+                        <strong>Understanding the Packing:</strong><br><br>
+                        Each byte stores TWO 4-bit entries:<br>
+                        <span class="inline-code">Byte: [Entry1:4bits][Entry0:4bits]</span><br><br>
+                        
+                        To read entry at index <span class="inline-code">i</span>:<br>
+                        <span class="inline-code">byte_index = i >> 3</span> (divide by 8, since 2 entries per byte)<br>
+                        <span class="inline-code">bit_offset = 4 * (i & 7)</span> (which half of byte?)<br>
+                        <span class="inline-code">value = (mem[byte_index] >> bit_offset) & 0xF</span><br><br>
+                        
+                        To write value <span class="inline-code">v</span> at index <span class="inline-code">i</span>:<br>
+                        <span class="inline-code">mem[byte_index] -= (0xF - v) << bit_offset</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Example: Memory Layout</h3>
+                <div class="memory-layout">
+                    <strong>Phase 2 memory (4-bit packing):</strong><br><br>
+                    
+                    <strong>Byte 0:</strong> <span class="inline-code">00000001</span> (binary)<br>
+                    <span class="memory-cell" style="background: #00cc00;">0000</span> Entry 0 = 0 (solved)<br>
+                    <span class="memory-cell" style="background: #00cc00;">0001</span> Entry 1 = 1<br><br>
+                    
+                    <strong>Byte 1:</strong> <span class="inline-code">11111111</span> (binary)<br>
+                    <span class="memory-cell">1111</span> Entry 2 = 15 (unknown)<br>
+                    <span class="memory-cell">1111</span> Entry 3 = 15 (unknown)<br><br>
+                    
+                    <strong>After marking Entry 2 as depth 3:</strong><br>
+                    <strong>Byte 1:</strong> <span class="inline-code">11110011</span> (binary)<br>
+                    <span class="memory-cell" style="background: #ffd700;">0011</span> Entry 2 = 3<br>
+                    <span class="memory-cell">1111</span> Entry 3 = 15 (unknown)
+                </div>
+            </div>
+        </div>
+
+        <div id="encoding" class="tab-content">
+            <h2>Data Encoding Schemes</h2>
+
+            <div class="section">
+                <h3>Phase 1: 4-Byte Encoding</h3>
+                <table>
+                    <tr>
+                        <th>Byte</th>
+                        <th>Contents</th>
+                        <th>Purpose</th>
+                    </tr>
+                    <tr>
+                        <td>0</td>
+                        <td>Distance (0-12)</td>
+                        <td>Minimum moves to reach G1</td>
+                    </tr>
+                    <tr>
+                        <td>1</td>
+                        <td>Move hints (6 moves)</td>
+                        <td>R, R', R2, U, U', U2 direction hints</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td>Move hints (6 moves)</td>
+                        <td>F, F', F2, L, L', L2 direction hints</td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td>Move hints (6 moves)</td>
+                        <td>D, D', D2, B, B', B2 direction hints</td>
+                    </tr>
+                </table>
+
+                <div class="code-block">
+<span class="comment">// Example entry at index 1234:</span>
+mem[1234 * 4 + 0] = 7;      <span class="comment">// Distance = 7 moves</span>
+mem[1234 * 4 + 1] = 0xA5;   <span class="comment">// Hints for R,U moves</span>
+mem[1234 * 4 + 2] = 0x3C;   <span class="comment">// Hints for F,L moves</span>
+mem[1234 * 4 + 3] = 0x91;   <span class="comment">// Hints for D,B moves</span>
+                </div>
+
+                <h4>Move Hint Decoding:</h4>
+                <div class="highlight">
+                    Each byte encodes hints for 6 moves (2 face groups × 3 variants each).<br><br>
+                    
+                    <strong>Format:</strong> Two 4-bit nibbles per face<br>
+                    <strong>Nibble structure:</strong> <span class="inline-code">SXXX</span><br>
+                    - <span class="inline-code">S</span> (bit 3): 0 = moves decrease distance, 1 = moves increase distance<br>
+                    - <span class="inline-code">XXX</span> (bits 0-2): 3 bits encoding which variant (base, prime, double) does what<br><br>
+                    
+                    <strong>Example:</strong> Nibble <span class="inline-code">1010</span> (decimal 10)<br>
+                    - Bit 3 = 1 → moves increase distance<br>
+                    - Bits 0-2 = 010 → specific pattern of which moves increase by how much
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Phase 2: 4-Bit Encoding</h3>
+                <table>
+                    <tr>
+                        <th>Value</th>
+                        <th>Meaning</th>
+                    </tr>
+                    <tr>
+                        <td>0-14</td>
+                        <td>Distance - 1 (0 means 1 move, 14 means 15 moves)</td>
+                    </tr>
+                    <tr>
+                        <td>15 (0xF)</td>
+                        <td>Unknown/unvisited state</td>
+                    </tr>
+                </table>
+
+                <div class="code-block">
+<span class="comment">// Reading a 4-bit entry at logical index i:</span>
+<span class="keyword">int</span> byte_offset = i >> 3;           <span class="comment">// Divide by 8 (2 entries per byte)</span>
+<span class="keyword">int</span> bit_shift = 4 * (i & 7);        <span class="comment">// Which nibble? (0 or 4)</span>
+<span class="keyword">int</span> value = (mem[byte_offset] >> bit_shift) & 0xF;
+
+<span class="keyword">if</span> (value == 0 && pc == identity_pc)
+    <span class="keyword">return</span> 0;  <span class="comment">// Actually solved</span>
+<span class="keyword">else</span>
+    <span class="keyword">return</span> value + 1;  <span class="comment">// Add 1 to get real distance</span>
+                </div>
+
+                <div class="highlight">
+                    <strong>Why add 1 when reading?</strong><br>
+                    This encoding trick allows distance 0 to be special:<br>
+                    - Stored as 0, but only for the solved state<br>
+                    - All other distances stored as (distance - 1)<br>
+                    - Maximum distance 18 fits in 4 bits (stored as 15, read as 16)<br>
+                    - Value 15 (0xF) reserved for "unknown"
+                </div>
+            </div>
+        </div>
+
+        <div id="comparison" class="tab-content">
+            <h2>Phase 1 vs Phase 2: Side-by-Side</h2>
+
+            <div class="compare-box">
+                <div class="compare-item">
+                    <h3>Phase 1 Generation</h3>
+                    <ul>
+                        <li><strong>Coordinate space:</strong><br>Corner symmetry × Edge orientation × Edge permutation</li>
+                        <li><strong>Total states:</strong> ~42 million</li>
+                        <li><strong>Storage:</strong> 4 bytes per state</li>
+                        <li><strong>File size:</strong> ~10 MB</li>
+                        <li><strong>Moves tested:</strong> All 18 moves</li>
+                        <li><strong>Max depth:</strong> 12 moves</li>
+                        <li><strong>Extra data:</strong> Move hints (3 bytes)</li>
+                        <li><strong>Time:</strong> ~30 seconds</li>
+                    </ul>
+                </div>
+
+                <div class="compare-item">
+                    <h3>Phase 2 Generation</h3>
+                    <ul>
+                        <li><strong>Coordinate space:</strong><br>Corner coordinate × Edge coordinate</li>
+                        <li><strong>Total states:</strong> ~19 million</li>
+                        <li><strong>Storage:</strong> 4 bits per state (packed!)</li>
+                        <li><strong>File size:</strong> ~40 MB</li>
+                        <li><strong>Moves tested:</strong> Only 10 G1 moves</li>
+                        <li><strong>Max depth:</strong> 18 moves</li>
+                        <li><strong>Extra data:</strong> None (just distance)</li>
+                        <li><strong>Time:</strong> ~60 seconds</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Why Different Approaches?</h3>
+                <div class="step-box">
+                    <strong>Phase 1 needs move hints</strong> because:
+                    <ul>
+                        <li>Used in tight IDA* loop millions of times per solve</li>
+                        <li>Move hints avoid recalculating which moves are promising</li>
+                        <li>3 extra bytes per entry is worth the speedup</li>
+                    </ul>
+                </div>
+
+                <div class="step-box">
+                    <strong>Phase 2 packs tightly</strong> because:
+                    <ul>
+                        <li>Larger state space (19M vs with-symmetry-reduced Phase 1)</li>
+                        <li>Phase 2 solver is called less frequently</li>
+                        <li>Can afford to recalculate moves on-the-fly</li>
+                        <li>4 bits is enough for distance 0-18</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>BFS Progression Comparison</h3>
+                <table>
+                    <tr>
+                        <th>Depth</th>
+                        <th>Phase 1 States</th>
+                        <th>Phase 2 States</th>
+                    </tr>
+                    <tr>
+                        <td>0</td>
+                        <td>1</td>
+                        <td>1</td>
+                    </tr>
+                    <tr>
+                        <td>1</td>
+                        <td>~18</td>
+                        <td>~10</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td>~243</td>
+                        <td>~90</td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td>~3,240</td>
+                        <td>~810</td>
+                    </tr>
+                    <tr>
+                        <td>...</td>
+                        <td>...</td>
+                        <td>...</td>
+                    </tr>
+                    <tr>
+                        <td>10</td>
+                        <td>~15 million</td>
+                        <td>~5 million</td>
+                    </tr>
+                    <tr>
+                        <td>12 (max P1)</td>
+                        <td>~42 million (all states)</td>
+                        <td>~12 million</td>
+                    </tr>
+                    <tr>
+                        <td>18 (max P2)</td>
+                        <td>N/A</td>
+                        <td>~19 million (all states)</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <h2>Summary: The Big Picture</h2>
+        <div class="section">
+            <div class="highlight">
+                <h3>What Table Generation Does:</h3>
+                <ol>
+                    <li><strong>Start from goal:</strong> The solved cube (or G1 subgroup for Phase 1)</li>
+                    <li><strong>BFS expansion:</strong> Apply all valid moves to all states at current depth</li>
+                    <li><strong>Mark distances:</strong> Record minimum moves needed for each discovered state</li>
+                    <li><strong>Encode efficiently:</strong> Pack data to minimize memory</li>
+                    <li><strong>Save to disk:</strong> Write to .dat file with checksum</li>
+                </ol>
+
+                <h3>Why It's Fast During Solving:</h3>
+                <ul>
+                    <li><strong>Pre-computation:</strong> All hard work done once, saved to disk</li>
+                    <li><strong>O(1) lookup:</strong> Array index = instant distance retrieval</li>
+                    <li><strong>Move hints (P1):</strong> Know which moves to try without calculation</li>
+                    <li><strong>Pruning power:</strong> Eliminates billions of useless search paths</li>
+                </ul>
+
+                <h3>The Trade-off:</h3>
+                <ul>
+                    <li><strong>Time:</strong> First run takes 90 seconds, later runs instant</li>
+                    <li><strong>Space:</strong> 50 MB on disk, worth it for solving speed</li>
+                    <li><strong>Result:</strong> Can solve any cube in milliseconds!</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showTab(tabName) {
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => content.classList.remove('active'));
+            
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYMMETRY: Coordinate Compression & State Reduction</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #2c3e50;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        header p {
+            font-size: 1.1em;
+            opacity: 0.95;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        section {
+            margin-bottom: 50px;
+        }
+        
+        h2 {
+            color: #f5576c;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #f5576c;
+        }
+        
+        h3 {
+            color: #f093fb;
+            font-size: 1.3em;
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+        
+        h4 {
+            color: #2c3e50;
+            font-size: 1.1em;
+            margin-top: 15px;
+            margin-bottom: 10px;
+        }
+        
+        p {
+            margin-bottom: 15px;
+            line-height: 1.8;
+        }
+        
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #d63384;
+        }
+        
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 20px 0;
+            border-left: 4px solid #f5576c;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        th {
+            background: #f5576c;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .highlight {
+            background: #fff3cd;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #ffc107;
+            margin: 20px 0;
+        }
+        
+        .info-box {
+            background: #ffe0e0;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #f5576c;
+            margin: 20px 0;
+        }
+        
+        .success-box {
+            background: #d4edda;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+            margin: 20px 0;
+        }
+        
+        ul, ol {
+            margin-left: 30px;
+            margin-bottom: 15px;
+        }
+        
+        li {
+            margin-bottom: 8px;
+        }
+        
+        .emoji {
+            font-size: 1.3em;
+            margin-right: 10px;
+        }
+        
+        .math-box {
+            background: #fff3e0;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #ff9800;
+            font-family: monospace;
+            margin: 15px 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .example {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #2196f3;
+            margin: 15px 0;
+        }
+        
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .comparison-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #f5576c;
+        }
+        
+        .comparison-box h4 {
+            color: #f5576c;
+            margin-bottom: 10px;
+        }
+        
+        footer {
+            background: #f8f9fa;
+            padding: 30px 40px;
+            border-top: 1px solid #ecf0f1;
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 0.95em;
+        }
+        
+        @media (max-width: 768px) {
+            header h1 { font-size: 2em; }
+            .comparison { grid-template-columns: 1fr; }
+            .content { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔄 SYMMETRY</h1>
+            <p>Coordinate Compression & State Reduction — Reducing 43 Quintillion to 2 Billion</p>
+        </header>
+        
+        <div class="content">
+            <!-- Overview -->
+            <section id="overview">
+                <h2><span class="emoji">🎯</span>The Core Problem</h2>
+                <p>A Rubik's Cube has approximately <strong>43,252,003,274,489,856,000</strong> possible states (43 quintillion!).</p>
+                <p>But wait... we can do better! 🧠</p>
+                
+                <div class="info-box">
+                    <p><strong>The Key Insight:</strong> Many of those 43 quintillion states are <strong>symmetrically equivalent</strong>. A cube rotated in 3D space is the same puzzle—just viewed from a different angle. If we can group equivalent states together, we reduce the problem massively!</p>
+                </div>
+                
+                <h3>The Reduction Magic</h3>
+                <table>
+                    <tr>
+                        <th>Representation</th>
+                        <th>State Space Size</th>
+                        <th>Reduction</th>
+                    </tr>
+                    <tr>
+                        <td>Complete cubepos</td>
+                        <td>~43 quintillion</td>
+                        <td>Baseline</td>
+                    </tr>
+                    <tr>
+                        <td><strong>CubeSymmetry (Phase 1)</strong></td>
+                        <td><strong>~2.2 billion</strong></td>
+                        <td><strong>20,000x smaller! 🎉</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>permcube (Phase 2)</strong></td>
+                        <td><strong>~43.2 billion</strong></td>
+                        <td><strong>1,000x smaller</strong></td>
+                    </tr>
+                </table>
+            </section>
+            
+            <!-- CubeSymmetry -->
+            <section id="cubesymmetry">
+                <h2><span class="emoji">🔀</span>CubeSymmetry: Phase 1 Coordinates</h2>
+                
+                <p>CubeSymmetry uses <strong>three independent coordinates</strong> that capture the information needed for Phase 1:</p>
+                
+                <pre>class CubeSymmetry {
+    lookup_type csymm;    // Corner orientation (0-2186) = 3^7
+    lookup_type eosymm;   // Edge orientation (0-2047) = 2^11
+    lookup_type epsymm;   // Edge permutation (0-494) = C(12,4)
+};</pre>
+                
+                <h3>The Three Coordinates Explained</h3>
+                
+                <h4>1️⃣ csymm (Corner Symmetry) — Range: 0 to 2,186</h4>
+                <div class="math-box">
+Maximum value = 3^7 - 1 = 2,186
+
+Why 3^7?
+- 8 corners, but the 8th corner orientation is determined by the other 7
+- Each corner has 3 possible orientations (0, 1, or 2)
+- Therefore: 3 × 3 × 3 × 3 × 3 × 3 × 3 = 2,187 possibilities
+                </div>
+                <p><strong>What it tracks:</strong> How corners are oriented (NOT where they are). Are corner pieces rotated correctly?</p>
+                
+                <h4>2️⃣ eosymm (Edge Orientation Symmetry) — Range: 0 to 2,047</h4>
+                <div class="math-box">
+Maximum value = 2^11 - 1 = 2,047
+
+Why 2^11?
+- 12 edges, but the 12th edge flip is determined by the other 11
+- Each edge has 2 possible orientations (0 or 1, flipped/not flipped)
+- Therefore: 2^11 = 2,048 possibilities
+                </div>
+                <p><strong>What it tracks:</strong> How edges are flipped (NOT where they are). Are edge pieces flipped correctly?</p>
+                
+                <h4>3️⃣ epsymm (Edge Permutation Symmetry) — Range: 0 to 494</h4>
+                <div class="math-box">
+Maximum value = C(12,4) - 1 = 495 - 1 = 494
+
+Why C(12,4)?
+- There are 12 edge positions
+- 4 of them are in the middle layer (special slots)
+- We need to track which 4 edges are in the middle layer
+- C(12,4) = 495 different combinations
+                </div>
+                <p><strong>What it tracks:</strong> Which edges are in the middle layer (the "UD slice" — U-layer, D-layer, middle edges). This is crucial for Phase 1!</p>
+                
+                <h3>Converting cubepos to CubeSymmetry</h3>
+                <pre>CubeSymmetry::CubeSymmetry(const cubepos& cp) {
+    int c = 0, eo = 0, ep = 0;
+    
+    // Calculate corner orientation: encode all 7 independent orientations
+    for (int i = 6; i >= 0; i--)
+        c = 3 * c + cubepos::corner_ori(cp.c[i]);
+    
+    // Calculate edge orientation: encode all 11 independent flips
+    for (int i = 10; i >= 0; i--) {
+        eo = 2 * eo + cubepos::edge_ori(cp.e[i]);
+        ep = 2 * ep + (cp.e[i] & 8);  // Check if in middle layer
+    }
+    
+    csymm = c;
+    eosymm = eo;
+    epsymm = epsymm_compress[ep >> 3];  // Compress to C(12,4) range
+}</pre>
+                
+                <div class="success-box">
+                    <p><strong>The compression is done!</strong> We've reduced 43 quintillion states to just 2.2 billion coordinate combinations.</p>
+                </div>
+            </section>
+            
+            <!-- Symmetries -->
+            <section id="symmetries">
+                <h2><span class="emoji">🌐</span>The 48 Spatial Symmetries</h2>
+                
+                <p>A cube can be oriented in space in exactly <strong>48 different ways</strong>:</p>
+                
+                <table>
+                    <tr>
+                        <th>Symmetry Type</th>
+                        <th>Count</th>
+                        <th>Explanation</th>
+                    </tr>
+                    <tr>
+                        <td>Rotational symmetries (no reflection)</td>
+                        <td>24</td>
+                        <td>The cube can be rotated to 24 different orientations</td>
+                    </tr>
+                    <tr>
+                        <td>Reflection symmetries (flipped versions)</td>
+                        <td>24</td>
+                        <td>The same 24 rotations, but mirror-reflected</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Total</strong></td>
+                        <td><strong>48</strong></td>
+                        <td>All possible spatial orientations</td>
+                    </tr>
+                </table>
+                
+                <h3>What Symmetry Means in Cube Solving</h3>
+                <div class="example">
+                    <p><strong>Imagine a contract from different perspectives:</strong></p>
+                    <ul>
+                        <li>Original perspective: "Party A pays Party B $1,000"</li>
+                        <li>Reversed perspective: "Party B receives $1,000 from Party A"</li>
+                        <li>Different language: "La parte A paga a la parte B $1,000"</li>
+                    </ul>
+                    <p>The legal obligation is identical—only the representation changed!</p>
+                    <p><strong>Similarly:</strong> Two cube states might be different rotations/reflections of each other, but they represent the same solving difficulty.</p>
+                </div>
+            </section>
+            
+            <!-- Move Application -->
+            <section id="moves">
+                <h2><span class="emoji">🎲</span>Applying Moves with Symmetry</h2>
+                
+                <p>To apply a move in symmetry coordinates:</p>
+                <pre>void CubeSymmetry::move(int mv) {
+    csymm = cornermove[csymm][mv];
+    eosymm = edgeomove[eosymm][mv];
+    epsymm = edgepmove[epsymm][mv];
+}</pre>
+                
+                <p>This is <strong>incredibly fast!</strong> Just three table lookups instead of transforming 20 pieces.</p>
+                
+                <h3>Static Lookup Tables for Phase 1</h3>
+                <table>
+                    <tr>
+                        <th>Table</th>
+                        <th>Dimensions</th>
+                        <th>Size</th>
+                        <th>Purpose</th>
+                    </tr>
+                    <tr>
+                        <td><code>cornermove</code></td>
+                        <td>[2187][18]</td>
+                        <td>~40 KB</td>
+                        <td>How corner coords transform with moves</td>
+                    </tr>
+                    <tr>
+                        <td><code>edgeomove</code></td>
+                        <td>[2048][18]</td>
+                        <td>~36 KB</td>
+                        <td>How edge orient coords transform</td>
+                    </tr>
+                    <tr>
+                        <td><code>edgepmove</code></td>
+                        <td>[495][18]</td>
+                        <td>~9 KB</td>
+                        <td>How edge perm coords transform</td>
+                    </tr>
+                </table>
+            </section>
+            
+            <!-- Pruning Tables -->
+            <section id="pruning">
+                <h2><span class="emoji">📋</span>Pruning Tables: The Secret Weapon</h2>
+                
+                <p>A <strong>pruning table</strong> is a pre-computed database that stores the minimum number of moves needed to reach a goal state from any coordinate value.</p>
+                
+                <h3>Phase 1 Pruning Table Structure</h3>
+                <pre>Index = csymm * EDGEOSYMM * EDGEPERM + eosymm * EDGEPERM + epsymm
+       = corner_index * 2048 * 495 + edge_orient_index * 495 + edge_perm_index
+
+For any index, we store:
+  - Minimum moves to reach G1 state (0-12 moves in Phase 1)
+  - Stored mod 3 for compression (only need 2 bits per entry)
+</pre>
+                
+                <div class="highlight">
+                    <p><strong>Why store mod 3?</strong> Each face turn changes move distance by -1, 0, or +1. By storing modulo 3, we use only 2 bits per entry instead of 4 bits. This compresses a ~40 MB table into ~10 MB! 🗜️</p>
+                </div>
+                
+                <h3>How Pruning Works</h3>
+                <table>
+                    <tr>
+                        <th>Depth</th>
+                        <th>Phase 1 States</th>
+                        <th>Meaning</th>
+                    </tr>
+                    <tr>
+                        <td>0</td>
+                        <td>1</td>
+                        <td>Solved cube (G1 state)</td>
+                    </tr>
+                    <tr>
+                        <td>1</td>
+                        <td>~18</td>
+                        <td>Reachable in 1 move</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td>~243</td>
+                        <td>Reachable in 2 moves</td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td>~3,240</td>
+                        <td>Reachable in 3 moves</td>
+                    </tr>
+                    <tr>
+                        <td>...</td>
+                        <td>...</td>
+                        <td>...</td>
+                    </tr>
+                    <tr>
+                        <td>12 (max)</td>
+                        <td>~2.2 billion</td>
+                        <td>All reachable Phase 1 states</td>
+                    </tr>
+                </table>
+            </section>
+            
+            <!-- permcube -->
+            <section id="permcube">
+                <h2><span class="emoji">✨</span>permcube: Phase 2 Only Permutations</h2>
+                
+                <p>Once Phase 1 is done and orientations are solved, Phase 2 only cares about <strong>permutations</strong> (WHERE pieces are):</p>
+                
+                <pre>class permcube {
+    unsigned short et, em, eb;     // Edge permutation (top, middle, bottom layers)
+    unsigned char etp, emp, ebp;   // Edge permutation orientations
+    unsigned char c8_4, ctp, cbp;  // Corner permutation info
+};</pre>
+                
+                <h3>Why permcube is Faster</h3>
+                <div class="comparison">
+                    <div class="comparison-box">
+                        <h4>Phase 1 (CubeSymmetry)</h4>
+                        <p>Must track:</p>
+                        <ul>
+                            <li>✓ Corner orientations</li>
+                            <li>✓ Edge orientations</li>
+                            <li>✓ Edge permutation pattern</li>
+                            <li>✗ Exact positions</li>
+                        </ul>
+                        <p><strong>State space:</strong> 2.2 billion</p>
+                    </div>
+                    <div class="comparison-box">
+                        <h4>Phase 2 (permcube)</h4>
+                        <p>Only tracks:</p>
+                        <ul>
+                            <li>✗ Orientations (already solved!)</li>
+                            <li>✗ Edge orientation pattern</li>
+                            <li>✓ Exact edge positions</li>
+                            <li>✓ Exact corner positions</li>
+                        </ul>
+                        <p><strong>State space:</strong> 43.2 billion</p>
+                    </div>
+                </div>
+                
+                <div class="success-box">
+                    <p><strong>Phase 2 is actually larger,</strong> but it's much faster because:</p>
+                    <ol>
+                        <li>Orientations are already solved (can ignore them)</li>
+                        <li>Only 12 different types of moves allowed (vs. 18)</li>
+                        <li>The search tree is pruned more aggressively</li>
+                    </ol>
+                </div>
+            </section>
+            
+            <!-- The Two-Phase Algorithm -->
+            <section id="twophase">
+                <h2><span class="emoji">🚀</span>The Complete Two-Phase Algorithm</h2>
+                
+                <pre>PHASE 1: Get to G1 subgroup
+  Input: cubepos (scrambled cube)
+  Convert: cubepos → CubeSymmetry coordinates
+  
+  Goal: Find sequence of moves M such that CubeSymmetry(move(M)) = G1
+  
+  Constraint: Can only use moves that preserve the G1 properties:
+    - Orientations never change
+    - Only 4 edges in middle layer, 4 in top layer, 4 in bottom layer
+  
+  Search: Iterative deepening with pruning tables
+    - Try depth 1, 2, 3, ... until solution found
+    - Each node: lookup min moves to G1 from pruning table
+    - If pruning_value > remaining_depth: PRUNE this branch
+
+
+PHASE 2: Solve the rest
+  Input: permcube (after Phase 1)
+  Goal: Find sequence of moves M such that permcube(move(M)) = solved
+  
+  Search: Standard depth-first search with Phase 2 pruning tables
+    - Only rotate U, D, and half-turns (F2, B2, R2, L2)
+    - These moves preserve the G1 state we achieved in Phase 1
+</pre>
+                
+                <h3>Total Complexity</h3>
+                <table>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Phase 1</th>
+                        <th>Phase 2</th>
+                    </tr>
+                    <tr>
+                        <td>State space</td>
+                        <td>2.2 billion</td>
+                        <td>43.2 billion</td>
+                    </tr>
+                    <tr>
+                        <td>Allowed moves</td>
+                        <td>6 (all faces, all twists)</td>
+                        <td>12 (only half-turns + U/D)</td>
+                    </tr>
+                    <tr>
+                        <td>Goal depth (max)</td>
+                        <td>12 moves</td>
+                        <td>18 moves</td>
+                    </tr>
+                    <tr>
+                        <td>Total max solution</td>
+                        <td colspan="2" style="text-align: center;">≤ 20 moves (God's Number!)</td>
+                    </tr>
+                </table>
+            </section>
+            
+            <!-- Summary -->
+            <section id="summary">
+                <h2><span class="emoji">📊</span>The Complete Picture</h2>
+                
+                <div class="math-box">
+Raw Cube State Space: 43,252,003,274,489,856,000 states
+                    ↓
+Phase 1 Coordinates: 2,187 × 2,048 × 495 = 2,215,588,352 states
+                    ↓
+With 16 symmetries: 2,215,588,352 ÷ 16 ≈ 138.5 million unique states
+                    ↓
+Phase 1 Pruning Table: Stores minimum moves to G1 for each
+                    ↓
+Phase 2 Coordinates: 12! ÷ 12 × 8! ÷ 2 ≈ 43.2 billion states
+                    ↓
+Phase 2 Pruning Table: Stores minimum moves to solved for each
+                    ↓
+SOLUTION: ≤ 20 moves! 🎉
+                </div>
+                
+                <div class="success-box">
+                    <p><strong>Key Breakthroughs:</strong></p>
+                    <ul>
+                        <li>✅ <strong>Coordinate systems</strong> compress state space by 20,000x</li>
+                        <li>✅ <strong>Symmetry reduction</strong> cuts memory in half</li>
+                        <li>✅ <strong>Two-phase approach</strong> splits hard problem into two easier ones</li>
+                        <li>✅ <strong>Pruning tables</strong> provide tight lower bounds for tree search</li>
+                        <li>✅ <strong>Fast lookups</strong> (not heavy computations)</li>
+                    </ul>
+                </div>
+            </section>
+        </div>
+        
+        <footer>
+            <p>🔄 Understanding symmetry: How Kociemba reduces the problem from impossible to solvable in microseconds.</p>
+            <p><em>The beauty of algorithm design: compress the problem space, then search efficiently!</em></p>
+        </footer>
+    </div>
+</body>
+</html>
