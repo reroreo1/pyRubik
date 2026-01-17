@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Complete Kociemba Algorithm: From Scramble to Solution</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.7;
+            color: #2c3e50;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            color: white;
+            padding: 50px 40px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.8em;
+            margin-bottom: 15px;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        header p {
+            font-size: 1.2em;
+            opacity: 0.95;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .toc {
+            background: #f8f9fa;
+            padding: 30px 40px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .toc h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .toc ul {
+            list-style: none;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 10px;
+        }
+
+        .toc li {
+            margin: 5px 0;
+        }
+
+        .toc a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .toc a:hover {
+            color: #764ba2;
+            padding-left: 10px;
+        }
+
+        .content {
+            padding: 50px 40px;
+        }
+
+        section {
+            margin-bottom: 60px;
+            padding-bottom: 40px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+
+        section:last-child {
+            border-bottom: none;
+        }
+
+        h2 {
+            color: #667eea;
+            font-size: 2em;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 4px solid #667eea;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        h3 {
+            color: #764ba2;
+            font-size: 1.4em;
+            margin-top: 35px;
+            margin-bottom: 20px;
+            padding-left: 15px;
+            border-left: 4px solid #764ba2;
+        }
+
+        h4 {
+            color: #2c3e50;
+            font-size: 1.15em;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        p {
+            margin-bottom: 18px;
+            line-height: 1.9;
+            font-size: 1.05em;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: 'Fira Code', 'Courier New', monospace;
+            color: #e83e8c;
+            font-size: 0.95em;
+        }
+
+        pre {
+            background: #1a1a2e;
+            color: #ecf0f1;
+            padding: 25px;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 25px 0;
+            border-left: 5px solid #667eea;
+            font-size: 0.95em;
+            line-height: 1.6;
+            font-family: 'Fira Code', 'Courier New', monospace;
+        }
+
+        pre .comment { color: #6c7a89; }
+        pre .keyword { color: #f093fb; }
+        pre .number { color: #ffd93d; }
+        pre .string { color: #6bcb77; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        th {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 18px 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 1.05em;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #ecf0f1;
+            vertical-align: top;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        tr:hover {
+            background: #e8f4f8;
+        }
+
+        .box {
+            padding: 25px;
+            border-radius: 10px;
+            margin: 25px 0;
+        }
+
+        .warning {
+            background: linear-gradient(135deg, #fff3cd, #ffeeba);
+            border-left: 5px solid #ffc107;
+        }
+
+        .info {
+            background: linear-gradient(135deg, #e7f3ff, #cce5ff);
+            border-left: 5px solid #667eea;
+        }
+
+        .success {
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            border-left: 5px solid #28a745;
+        }
+
+        .danger {
+            background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+            border-left: 5px solid #dc3545;
+        }
+
+        .formula {
+            background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+            border-left: 5px solid #ff9800;
+            font-family: 'Fira Code', monospace;
+            padding: 20px 25px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .formula-title {
+            font-weight: bold;
+            color: #e65100;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        ul, ol {
+            margin-left: 30px;
+            margin-bottom: 20px;
+        }
+
+        li {
+            margin-bottom: 12px;
+            line-height: 1.7;
+        }
+
+        .emoji {
+            font-size: 1.4em;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin: 25px 0;
+        }
+
+        .card {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            border-top: 4px solid #667eea;
+        }
+
+        .card h4 {
+            color: #667eea;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+
+        .flow-box {
+            background: #1a1a2e;
+            color: #ecf0f1;
+            padding: 30px;
+            border-radius: 10px;
+            font-family: monospace;
+            line-height: 2.2;
+            margin: 25px 0;
+            text-align: center;
+        }
+
+        .flow-box .arrow {
+            color: #f093fb;
+            font-size: 1.3em;
+        }
+
+        .flow-box .step {
+            color: #6bcb77;
+            font-weight: bold;
+        }
+
+        .flow-box .data {
+            color: #ffd93d;
+        }
+
+        .visual-box {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 10px;
+            margin: 25px 0;
+            border: 2px dashed #667eea;
+        }
+
+        .bit-diagram {
+            font-family: monospace;
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            display: inline-block;
+            margin: 10px 0;
+        }
+
+        .bit-diagram .bit {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            line-height: 40px;
+            text-align: center;
+            margin: 2px;
+            border-radius: 4px;
+        }
+
+        .bit-diagram .ori { background: #e74c3c; }
+        .bit-diagram .perm { background: #3498db; }
+
+        footer {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #ecf0f1;
+            padding: 40px;
+            text-align: center;
+        }
+
+        footer p {
+            margin-bottom: 10px;
+            opacity: 0.9;
+        }
+
+        @media (max-width: 768px) {
+            header h1 { font-size: 2em; }
+            h2 { font-size: 1.6em; }
+            .content { padding: 30px 20px; }
+            .toc ul { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧩 The Complete Kociemba Algorithm</h1>
+            <p>A deep dive into encoding, symmetry, and the two-phase solver — everything you need to understand how a computer solves a Rubik's Cube in microseconds</p>
+        </header>
+
+        <nav class="toc">
+            <h2>📑 Table of Contents</h2>
+            <ul>
+                <li><a href="#macro">1. The Macro View: Algorithm Overview</a></li>
+                <li><a href="#encoding">2. Encoding: The Heart of Everything</a></li>
+                <li><a href="#cubepos">3. cubepos: Complete State Representation</a></li>
+                <li><a href="#moves">4. Move Operations: How Turns Work</a></li>
+                <li><a href="#symmetry">5. Symmetry: The 48 Transformations</a></li>
+                <li><a href="#coordinates">6. Coordinate Systems: State Compression</a></li>
+                <li><a href="#phase1">7. Phase 1: Orientation Solving</a></li>
+                <li><a href="#phase2">8. Phase 2: Permutation Solving</a></li>
+                <li><a href="#pruning">9. Pruning Tables: The Speed Secret</a></li>
+                <li><a href="#ambiguous">10. Clarifying Ambiguities</a></li>
+            </ul>
+        </nav>
+
+        <div class="content">
+            <!-- SECTION 1: MACRO VIEW -->
+            <section id="macro">
+                <h2><span class="emoji">🎯</span> The Macro View: Algorithm Overview</h2>
+
+                <p>The Kociemba algorithm solves any Rubik's Cube in <strong>at most 20 moves</strong> (God's Number). It does this by splitting the problem into two phases:</p>
+
+                <div class="flow-box">
+                    <span class="data">Scrambled Cube (43 quintillion possible states)</span><br>
+                    <span class="arrow">↓</span><br>
+                    <span class="step">PHASE 1: Solve Orientations</span><br>
+                    <span class="data">Get to G1 subgroup (~2.2 billion states)</span><br>
+                    <span class="arrow">↓</span><br>
+                    <span class="step">PHASE 2: Solve Permutations</span><br>
+                    <span class="data">Reach solved state (1 state)</span><br>
+                    <span class="arrow">↓</span><br>
+                    <span class="step">✨ SOLVED! ≤20 moves total</span>
+                </div>
+
+                <h3>Why Two Phases?</h3>
+                <p>Searching 43 quintillion states is impossible. But if we break it down:</p>
+
+                <table>
+                    <tr>
+                        <th>Approach</th>
+                        <th>State Space</th>
+                        <th>Feasibility</th>
+                    </tr>
+                    <tr>
+                        <td>Brute Force (one phase)</td>
+                        <td>43,252,003,274,489,856,000</td>
+                        <td>❌ Impossible</td>
+                    </tr>
+                    <tr>
+                        <td>Phase 1 (orientations)</td>
+                        <td>2,217,093,120</td>
+                        <td>✅ Manageable</td>
+                    </tr>
+                    <tr>
+                        <td>Phase 2 (permutations)</td>
+                        <td>43,252,003,274</td>
+                        <td>✅ Manageable</td>
+                    </tr>
+                </table>
+
+                <div class="box success">
+                    <strong>Key Insight:</strong> Two manageable problems are easier than one impossible one. Phase 1 restricts the cube to a "subgroup" where Phase 2 can finish quickly.
+                </div>
+
+                <h3>What is the G1 Subgroup?</h3>
+                <p>G1 is a special set of cube states where:</p>
+                <ul>
+                    <li>✅ All <strong>corner orientations</strong> are correct (not twisted)</li>
+                    <li>✅ All <strong>edge orientations</strong> are correct (not flipped)</li>
+                    <li>✅ The <strong>4 middle-layer edges</strong> are in the middle layer (though maybe wrong positions)</li>
+                </ul>
+
+                <div class="box info">
+                    <strong>Why G1 matters:</strong> From any G1 state, you can solve the cube using ONLY these moves: <code>U, U', U2, D, D', D2, R2, L2, F2, B2</code>. No quarter-turns of R, L, F, B needed! This drastically reduces the search space in Phase 2.
+                </div>
+            </section>
+
+            <!-- SECTION 2: ENCODING -->
+            <section id="encoding">
+                <h2><span class="emoji">🔢</span> Encoding: The Heart of Everything</h2>
+
+                <p>Every piece of the Rubik's Cube has TWO properties:</p>
+                <ol>
+                    <li><strong>Permutation (Position):</strong> WHERE is this piece located?</li>
+                    <li><strong>Orientation:</strong> HOW is this piece rotated/flipped?</li>
+                </ol>
+
+                <p>The genius of cubepos is encoding BOTH into a <strong>single byte</strong> per piece.</p>
+
+                <h3>Corner Encoding</h3>
+
+                <div class="formula">
+                    <div class="formula-title">Corner Encoding Formula:</div>
+                    <code>cubie_value = orientation × 8 + permutation</code><br><br>
+                    Where:<br>
+                    • permutation ∈ {0, 1, 2, 3, 4, 5, 6, 7} — which of 8 corner slots<br>
+                    • orientation ∈ {0, 1, 2} — twist state (0°, 120°, 240°)
+                </div>
+
+                <div class="visual-box">
+                    <h4>Visual: How Corner Encoding Works</h4>
+                    <p>For a corner at position 5 with orientation 2:</p>
+                    <div class="bit-diagram">
+                        <span class="bit ori">2</span>
+                        <span style="color: #f093fb;">×8 +</span>
+                        <span class="bit perm">5</span>
+                        <span style="color: #f093fb;">=</span>
+                        <span class="bit" style="background: #9b59b6;">21</span>
+                    </div>
+                    <p style="margin-top: 15px;"><strong>Decoding:</strong></p>
+                    <ul>
+                        <li><code>permutation = cubie_value & 7</code> → <code>21 & 7 = 5</code> ✅</li>
+                        <li><code>orientation = cubie_value >> 3</code> → <code>21 >> 3 = 2</code> ✅</li>
+                    </ul>
+                    <p><strong>Why & 7?</strong> Because 7 = 0b111 (binary), which masks the lower 3 bits. Positions 0-7 fit in 3 bits!</p>
+                </div>
+
+                <h3>Edge Encoding</h3>
+
+                <div class="formula">
+                    <div class="formula-title">Edge Encoding Formula:</div>
+                    <code>cubie_value = permutation × 2 + orientation</code><br><br>
+                    Where:<br>
+                    • permutation ∈ {0, 1, ..., 11} — which of 12 edge slots<br>
+                    • orientation ∈ {0, 1} — flipped or not
+                </div>
+
+                <div class="visual-box">
+                    <h4>Visual: How Edge Encoding Works</h4>
+                    <p>For an edge at position 7 that IS flipped (orientation 1):</p>
+                    <div class="bit-diagram">
+                        <span class="bit perm">7</span>
+                        <span style="color: #f093fb;">×2 +</span>
+                        <span class="bit ori">1</span>
+                        <span style="color: #f093fb;">=</span>
+                        <span class="bit" style="background: #9b59b6;">15</span>
+                    </div>
+                    <p style="margin-top: 15px;"><strong>Decoding:</strong></p>
+                    <ul>
+                        <li><code>permutation = cubie_value >> 1</code> → <code>15 >> 1 = 7</code> ✅</li>
+                        <li><code>orientation = cubie_value & 1</code> → <code>15 & 1 = 1</code> ✅</li>
+                    </ul>
+                    <p><strong>Why different from corners?</strong> Edges have only 2 orientations (flip/no flip), so orientation needs just 1 bit. The formula is reversed to keep bit operations simple.</p>
+                </div>
+
+                <div class="box warning">
+                    <strong>⚠️ Ambiguity Alert: Why are corner and edge formulas different?</strong><br><br>
+                    <strong>Corners:</strong> <code>ori × 8 + perm</code> — Orientation in HIGH bits<br>
+                    <strong>Edges:</strong> <code>perm × 2 + ori</code> — Orientation in LOW bit<br><br>
+                    This seems inconsistent, but it's deliberate optimization:
+                    <ul>
+                        <li>Corners have 3 orientations → need 2 bits → stored in bits 3-4</li>
+                        <li>Edges have 2 orientations → need 1 bit → stored in bit 0</li>
+                        <li>This makes <code>edge_flip(v) = v ^ 1</code> super fast (just XOR the low bit!)</li>
+                    </ul>
+                </div>
+
+                <h3>Helper Functions in Code</h3>
+                <pre>// CORNER helpers
+static inline int corner_perm(int cubieval) { return cubieval & 7; }      // Extract position (bits 0-2)
+static inline int corner_ori(int cubieval)  { return cubieval >> 3; }     // Extract orientation (bits 3-4)
+static inline int corner_val(int perm, int ori) { return ori * 8 + perm; } // Combine into encoding
+
+// EDGE helpers  
+static inline int edge_perm(int cubieval) { return cubieval >> 1; }       // Extract position (bits 1-4)
+static inline int edge_ori(int cubieval)  { return cubieval & 1; }        // Extract orientation (bit 0)
+static inline int edge_val(int perm, int ori) { return perm * 2 + ori; }  // Combine into encoding
+static inline int edge_flip(int cubieval) { return cubieval ^ 1; }        // Toggle flip state</pre>
+            </section>
+
+            <!-- SECTION 3: CUBEPOS -->
+            <section id="cubepos">
+                <h2><span class="emoji">📦</span> cubepos: Complete State Representation</h2>
+
+                <p>The <code>cubepos</code> class is the authoritative representation of a cube state:</p>
+
+                <pre>class cubepos {
+public:
+    unsigned char c[8];   // 8 corner cubies (each stores position + orientation)
+    unsigned char e[12];  // 12 edge cubies (each stores position + orientation)
+
+    // Total: 20 bytes to represent ANY cube state!
+};</pre>
+
+                <h3>Memory Layout</h3>
+                <table>
+                    <tr>
+                        <th>Array</th>
+                        <th>Index</th>
+                        <th>Represents</th>
+                        <th>Encoding Range</th>
+                    </tr>
+                    <tr>
+                        <td><code>c[0]</code> to <code>c[7]</code></td>
+                        <td>0-7</td>
+                        <td>Corner slots (URF, UFL, ULB, UBR, DFR, DLF, DBL, DRB)</td>
+                        <td>0-23 (8 positions × 3 orientations)</td>
+                    </tr>
+                    <tr>
+                        <td><code>e[0]</code> to <code>e[11]</code></td>
+                        <td>0-11</td>
+                        <td>Edge slots (UF, UL, UB, UR, DF, DL, DB, DR, FR, FL, BL, BR)</td>
+                        <td>0-23 (12 positions × 2 orientations)</td>
+                    </tr>
+                </table>
+
+                <h3>The Identity Cube (Solved State)</h3>
+                <pre>// In a solved cube:
+// c[0] = corner_val(0, 0) = 0  → Corner 0 is at position 0, orientation 0
+// c[1] = corner_val(1, 0) = 1  → Corner 1 is at position 1, orientation 0
+// ...
+// e[0] = edge_val(0, 0) = 0    → Edge 0 is at position 0, not flipped
+// e[1] = edge_val(1, 0) = 2    → Edge 1 is at position 1, not flipped
+// ...
+
+const cubepos identity_cube;  // Pre-initialized solved cube</pre>
+
+                <div class="box info">
+                    <strong>Key Point:</strong> The array INDEX tells you which SLOT you're looking at. The VALUE stored tells you which PIECE is there and how it's oriented.
+                    <br><br>
+                    Example: <code>c[3] = 17</code> means:<br>
+                    • Looking at corner slot 3<br>
+                    • The piece there is corner 1 (<code>17 & 7 = 1</code>)<br>
+                    • It's twisted by orientation 2 (<code>17 >> 3 = 2</code>)
+                </div>
+            </section>
+
+            <!-- SECTION 4: MOVES -->
+            <section id="moves">
+                <h2><span class="emoji">🔄</span> Move Operations: How Turns Work</h2>
+
+                <h3>Move Numbering</h3>
+                <p>There are 18 possible moves (6 faces × 3 twist types):</p>
+
+                <table>
+                    <tr>
+                        <th>Face</th>
+                        <th>90° CW</th>
+                        <th>180°</th>
+                        <th>90° CCW</th>
+                    </tr>
+                    <tr><td>U (Up)</td><td>0</td><td>1</td><td>2</td></tr>
+                    <tr><td>F (Front)</td><td>3</td><td>4</td><td>5</td></tr>
+                    <tr><td>R (Right)</td><td>6</td><td>7</td><td>8</td></tr>
+                    <tr><td>D (Down)</td><td>9</td><td>10</td><td>11</td></tr>
+                    <tr><td>B (Back)</td><td>12</td><td>13</td><td>14</td></tr>
+                    <tr><td>L (Left)</td><td>15</td><td>16</td><td>17</td></tr>
+                </table>
+
+                <div class="formula">
+                    <div class="formula-title">Move Number Formula:</div>
+                    <code>move_number = face × 3 + twist_type</code><br><br>
+                    Where face ∈ {0=U, 1=F, 2=R, 3=D, 4=B, 5=L}<br>
+                    And twist_type ∈ {0=90°CW, 1=180°, 2=90°CCW}
+                </div>
+
+                <h3>The Move Lookup Table</h3>
+                <p>Instead of computing how each piece moves, we PRE-COMPUTE it in a lookup table:</p>
+
+                <pre>// Pre-computed: for each move and each possible cubie encoding,
+// what's the new encoding after the move?
+static unsigned char edge_trans[18][24];    // [move][old_encoding] → new_encoding
+static unsigned char corner_trans[18][24];  // [move][old_encoding] → new_encoding
+
+void cubepos::move(int mov) {
+    // Apply move to all corners
+    const unsigned char* ct = corner_trans[mov];
+    c[0] = ct[c[0]];  c[1] = ct[c[1]];  c[2] = ct[c[2]];  c[3] = ct[c[3]];
+    c[4] = ct[c[4]];  c[5] = ct[c[5]];  c[6] = ct[c[6]];  c[7] = ct[c[7]];
+
+    // Apply move to all edges
+    const unsigned char* et = edge_trans[mov];
+    e[0] = et[e[0]];  e[1] = et[e[1]];  e[2] = et[e[2]];  e[3] = et[e[3]];
+    e[4] = et[e[4]];  e[5] = et[e[5]];  e[6] = et[e[6]];  e[7] = et[e[7]];
+    e[8] = et[e[8]];  e[9] = et[e[9]];  e[10] = et[e[10]]; e[11] = et[e[11]];
+}</pre>
+
+                <div class="box success">
+                    <strong>Why This is Brilliant:</strong>
+                    <ul>
+                        <li>No if-statements, no arithmetic — just array lookups</li>
+                        <li>Each lookup is O(1) — constant time</li>
+                        <li>The entire move() function is 20 array accesses</li>
+                        <li>Modern CPUs execute this in nanoseconds</li>
+                    </ul>
+                </div>
+
+                <h3>How Moves Affect Orientation</h3>
+
+                <div class="box warning">
+                    <strong>⚠️ Subtle Point: Not All Moves Change Orientation!</strong><br><br>
+                    <strong>U and D moves:</strong> Corners and edges just cycle positions. NO orientation change.<br>
+                    <strong>R and L moves:</strong> Edges FLIP. Corners get TWISTED.<br>
+                    <strong>F and B moves:</strong> Corners get TWISTED. Edges do NOT flip.<br><br>
+                    This is encoded in these arrays:
+                    <pre>static const unsigned char edge_change[6] = {0, 0, 1, 0, 0, 1};  // R and L flip edges
+static const unsigned char corner_change[6][4] = {
+    {0, 0, 0, 0},  // U - no twist
+    {1, 2, 1, 2},  // F - alternating twists
+    {1, 2, 1, 2},  // R - alternating twists
+    {0, 0, 0, 0},  // D - no twist
+    {1, 2, 1, 2},  // B - alternating twists
+    {1, 2, 1, 2},  // L - alternating twists
+};</pre>
+                </div>
+            </section>
+
+            <!-- SECTION 5: SYMMETRY -->
+            <section id="symmetry">
+                <h2><span class="emoji">🌐</span> Symmetry: The 48 Transformations</h2>
+
+                <p>A cube can be viewed from <strong>48 different orientations</strong> in 3D space. These are the symmetries of a cube.</p>
+
+                <h3>The 48 Symmetries Breakdown</h3>
+                <table>
+                    <tr>
+                        <th>Category</th>
+                        <th>Count</th>
+                        <th>Description</th>
+                    </tr>
+                    <tr>
+                        <td>Identity</td>
+                        <td>1</td>
+                        <td>No rotation (original view)</td>
+                    </tr>
+                    <tr>
+                        <td>Face rotations</td>
+                        <td>9</td>
+                        <td>90°, 180°, 270° around face axes (×3 axes)</td>
+                    </tr>
+                    <tr>
+                        <td>Vertex rotations</td>
+                        <td>8</td>
+                        <td>120°, 240° around body diagonals (×4 diagonals)</td>
+                    </tr>
+                    <tr>
+                        <td>Edge rotations</td>
+                        <td>6</td>
+                        <td>180° around edge midpoint axes (×6 axes)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Total rotations</strong></td>
+                        <td><strong>24</strong></td>
+                        <td>All pure rotations</td>
+                    </tr>
+                    <tr>
+                        <td>+ Reflections</td>
+                        <td>24</td>
+                        <td>Each rotation combined with a mirror flip</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Grand Total</strong></td>
+                        <td><strong>48</strong></td>
+                        <td>All symmetries (including reflections)</td>
+                    </tr>
+                </table>
+
+                <h3>Why Symmetry Matters for Solving</h3>
+
+                <div class="grid-2">
+                    <div class="card">
+                        <h4>🔍 State Equivalence</h4>
+                        <p>Two cube states that are symmetric are equally hard to solve. If state A takes 15 moves, all 47 symmetric versions of A also take 15 moves.</p>
+                    </div>
+                    <div class="card">
+                        <h4>💾 Memory Savings</h4>
+                        <p>Instead of storing pruning data for all states, we only need to store data for ONE representative of each equivalence class. Up to 48× memory reduction!</p>
+                    </div>
+                </div>
+
+                <h3>Symmetry Tables in Code</h3>
+                <pre>// How faces map under symmetry m
+static unsigned char face_map[48][6];     // face_map[m][f] = new face for f under symmetry m
+
+// How moves map under symmetry m
+static unsigned char move_map[48][18];    // move_map[m][mv] = equivalent move under symmetry m
+
+// How cubies transform under symmetry m
+static unsigned char rot_corner[48][24];  // rot_corner[m][c] = transformed corner encoding
+static unsigned char rot_edge[48][24];    // rot_edge[m][e] = transformed edge encoding
+
+// Symmetry multiplication: combining two symmetries
+static unsigned char mm[48][48];          // mm[a][b] = symmetry resulting from a then b
+static unsigned char invm[48];            // invm[m] = inverse of symmetry m</pre>
+
+                <h3>The remap_into Operation</h3>
+                <p>This applies a symmetry transformation to a cube state:</p>
+
+                <pre>void cubepos::remap_into(int m, cubepos& dst) const {
+    int mprime = invm[m];  // Inverse symmetry
+
+    for (int i = 0; i < 8; i++) {
+        // 1. Find which corner in current cube maps to position i under symmetry
+        int c1 = rot_corner[mprime][i];
+
+        // 2. Get that corner's value and combine orientations
+        int c2 = corner_ori_add(c[corner_perm(c1)], c1);
+
+        // 3. Transform to destination symmetry frame
+        dst.c[i] = rot_corner[m][c2];
+    }
+    // Same logic for edges...
+}</pre>
+
+                <div class="box warning">
+                    <strong>⚠️ Ambiguity: Why do we need both m and invm[m]?</strong><br><br>
+                    When remapping a cube by symmetry m:
+                    <ul>
+                        <li><code>mprime = invm[m]</code>: "Which piece in the old frame maps to position i in the new frame?"</li>
+                        <li><code>rot_corner[m][...]</code>: "How does this piece's encoding change in the new frame?"</li>
+                    </ul>
+                    Think of it as: inverse to FIND the source, forward to TRANSFORM the encoding.
+                </div>
+            </section>
+
+            <!-- SECTION 6: COORDINATES -->
+            <section id="coordinates">
+                <h2><span class="emoji">📊</span> Coordinate Systems: State Compression</h2>
+
+                <p>This is where the magic happens. We compress the full cube state into small coordinate values.</p>
+
+                <h3>CubeSymmetry: Phase 1 Coordinates</h3>
+
+                <pre>class CubeSymmetry {
+    lookup_type csymm;    // Corner orientation: 0 to 2186 (= 3^7 - 1)
+    lookup_type eosymm;   // Edge orientation: 0 to 2047 (= 2^11 - 1)
+    lookup_type epsymm;   // Edge permutation pattern: 0 to 494 (= C(12,4) - 1)
+};</pre>
+
+                <h4>Coordinate 1: csymm (Corner Orientation)</h4>
+                <div class="formula">
+                    <div class="formula-title">Corner Orientation Encoding:</div>
+                    <code>csymm = Σ (corner_ori(c[i]) × 3^i) for i = 0 to 6</code><br><br>
+                    We only encode 7 corners because the 8th is determined by the constraint:<br>
+                    <code>sum of all corner orientations ≡ 0 (mod 3)</code><br><br>
+                    Range: 0 to 3^7 - 1 = 0 to 2186
+                </div>
+
+                <h4>Coordinate 2: eosymm (Edge Orientation)</h4>
+                <div class="formula">
+                    <div class="formula-title">Edge Orientation Encoding:</div>
+                    <code>eosymm = Σ (edge_ori(e[i]) × 2^i) for i = 0 to 10</code><br><br>
+                    We only encode 11 edges because the 12th is determined by:<br>
+                    <code>sum of all edge orientations ≡ 0 (mod 2)</code><br><br>
+                    Range: 0 to 2^11 - 1 = 0 to 2047
+                </div>
+
+                <h4>Coordinate 3: epsymm (Edge Permutation Pattern)</h4>
+                <div class="formula">
+                    <div class="formula-title">Middle Layer Edge Encoding:</div>
+                    <code>epsymm = index of which 4 positions contain middle-layer edges</code><br><br>
+                    There are C(12,4) = 495 ways to choose 4 positions out of 12.<br>
+                    Range: 0 to 494
+                </div>
+
+                <div class="box info">
+                    <strong>Total Phase 1 State Space:</strong><br>
+                    2187 × 2048 × 495 = <strong>2,217,093,120</strong> states<br><br>
+                    Compare to full cube: 43,252,003,274,489,856,000 states<br>
+                    <strong>Reduction: ~19.5 trillion times smaller!</strong>
+                </div>
+
+                <h3>permcube: Phase 2 Coordinates</h3>
+                <p>After Phase 1, orientations are solved. We only track POSITIONS:</p>
+
+                <pre>class permcube {
+    // Edge layer tracking (which layer each edge is in)
+    unsigned short et, em, eb;      // Top, middle, bottom layer patterns
+    unsigned char etp, emp, ebp;    // Permutation within each layer
+
+    // Corner tracking
+    unsigned char c8_4;             // Which 4 corners are in top vs bottom
+    unsigned char ctp, cbp;         // Permutation within top/bottom
+};</pre>
+
+                <div class="box warning">
+                    <strong>⚠️ Ambiguity: Why is Phase 2 state space LARGER than Phase 1?</strong><br><br>
+                    Phase 1: ~2.2 billion states<br>
+                    Phase 2: ~43.2 billion states<br><br>
+                    <strong>But Phase 2 is still easier because:</strong>
+                    <ul>
+                        <li>Only 10 moves allowed (no quarter-turns of F, B, R, L)</li>
+                        <li>The search tree branches less</li>
+                        <li>Pruning is more effective</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- SECTION 7: PHASE 1 -->
+            <section id="phase1">
+                <h2><span class="emoji">⚙️</span> Phase 1: Orientation Solving</h2>
+
+                <h3>Goal</h3>
+                <p>Transform any scrambled cube into a G1 state where:</p>
+                <ul>
+                    <li>All corner orientations = 0 → csymm = 0</li>
+                    <li>All edge orientations = 0 → eosymm = 0</li>
+                    <li>Middle edges in middle layer → epsymm = 0</li>
+                </ul>
+
+                <h3>The Search Algorithm</h3>
+                <pre>// Iterative Deepening Depth-First Search (IDDFS)
+function phase1_solve(cube):
+    kc = CubeSymmetry(cube)  // Convert to coordinates
+
+    for depth = 0 to 12:  // Phase 1 never needs more than 12 moves
+        result = phase1_search(kc, depth, 0, -1)
+        if result != NULL:
+            return result
+
+    return IMPOSSIBLE  // Should never happen for valid cubes
+
+function phase1_search(kc, max_depth, current_depth, last_face):
+    // Goal check
+    if kc.csymm == 0 and kc.eosymm == 0 and kc.epsymm == 0:
+        return FOUND_SOLUTION
+
+    // Pruning check
+    min_moves_needed = phase1_pruning_table[kc]
+    if current_depth + min_moves_needed > max_depth:
+        return NULL  // Can't possibly reach goal in remaining moves
+
+    // Try all 18 moves
+    for move = 0 to 17:
+        // Skip redundant moves (same face as last, or opposite face in wrong order)
+        if is_redundant(move, last_face):
+            continue
+
+        new_kc = kc.apply_move(move)
+        result = phase1_search(new_kc, max_depth, current_depth + 1, move / 3)
+        if result != NULL:
+            return prepend(move, result)
+
+    return NULL</pre>
+
+                <h3>Move Application in Phase 1</h3>
+                <pre>void CubeSymmetry::move(int mv) {
+    // Three simple table lookups!
+    csymm  = cornermove[csymm][mv];   // New corner orientation
+    eosymm = edgeomove[eosymm][mv];   // New edge orientation
+    epsymm = edgepmove[epsymm][mv];   // New edge pattern
+}</pre>
+
+                <div class="box success">
+                    <strong>Speed:</strong> Applying a move to CubeSymmetry is just 3 array lookups. The entire Phase 1 search explores millions of nodes per second.
+                </div>
+            </section>
+
+            <!-- SECTION 8: PHASE 2 -->
+            <section id="phase2">
+                <h2><span class="emoji">🎯</span> Phase 2: Permutation Solving</h2>
+
+                <h3>Starting Point</h3>
+                <p>After Phase 1, the cube is in G1: orientations are correct, middle edges are in the middle layer. Now we need to put every piece in its correct POSITION.</p>
+
+                <h3>Restricted Move Set</h3>
+                <p>In Phase 2, we can only use moves that PRESERVE the G1 state:</p>
+
+                <table>
+                    <tr>
+                        <th>Move</th>
+                        <th>Allowed?</th>
+                        <th>Why?</th>
+                    </tr>
+                    <tr><td>U, U2, U'</td><td>✅ Yes</td><td>Only moves top layer pieces</td></tr>
+                    <tr><td>D, D2, D'</td><td>✅ Yes</td><td>Only moves bottom layer pieces</td></tr>
+                    <tr><td>R2</td><td>✅ Yes</td><td>180° preserves orientations</td></tr>
+                    <tr><td>L2</td><td>✅ Yes</td><td>180° preserves orientations</td></tr>
+                    <tr><td>F2</td><td>✅ Yes</td><td>180° preserves orientations</td></tr>
+                    <tr><td>B2</td><td>✅ Yes</td><td>180° preserves orientations</td></tr>
+                    <tr><td>R, R'</td><td>❌ No</td><td>Would twist corners and flip edges</td></tr>
+                    <tr><td>L, L'</td><td>❌ No</td><td>Would twist corners and flip edges</td></tr>
+                    <tr><td>F, F'</td><td>❌ No</td><td>Would twist corners</td></tr>
+                    <tr><td>B, B'</td><td>❌ No</td><td>Would twist corners</td></tr>
+                </table>
+
+                <div class="box info">
+                    <strong>Phase 2 has only 10 generators:</strong> U, U', U2, D, D', D2, R2, L2, F2, B2<br>
+                    This dramatically reduces the branching factor compared to Phase 1's 18 moves.
+                </div>
+
+                <h3>Phase 2 Search</h3>
+                <p>Same IDDFS structure as Phase 1, but:</p>
+                <ul>
+                    <li>Uses permcube coordinates instead of CubeSymmetry</li>
+                    <li>Only tries the 10 allowed moves</li>
+                    <li>Uses Phase 2 pruning table</li>
+                    <li>Maximum depth is 18 moves</li>
+                </ul>
+            </section>
+
+            <!-- SECTION 9: PRUNING -->
+            <section id="pruning">
+                <h2><span class="emoji">✂️</span> Pruning Tables: The Speed Secret</h2>
+
+                <p>Pruning tables are PRE-COMPUTED databases that tell us: "From this state, what's the MINIMUM number of moves to reach the goal?"</p>
+
+                <h3>How Pruning Works</h3>
+                <div class="visual-box">
+                    <h4>Example: Searching at depth 7</h4>
+                    <p>Current state: csymm=1234, eosymm=567, epsymm=89</p>
+                    <p>Pruning table lookup: <code>phase1_prune[1234][567][89] = 5</code></p>
+                    <p>This means: "Need AT LEAST 5 more moves to reach G1"</p>
+                    <br>
+                    <p>We're at depth 4, searching to max depth 7.</p>
+                    <p>Remaining depth: 7 - 4 = 3 moves</p>
+                    <p>Pruning value: 5 moves needed</p>
+                    <br>
+                    <p><strong>5 > 3 → PRUNE!</strong> ✂️</p>
+                    <p>Don't explore this branch — it can't possibly lead to a solution.</p>
+                </div>
+
+                <h3>Building Pruning Tables</h3>
+                <pre>// Breadth-First Search from solved state
+function build_pruning_table():
+    // Initialize: all states unknown (distance = 255)
+    prune_table = new array[2187][2048][495] filled with 255
+
+    // Solved state has distance 0
+    prune_table[0][0][0] = 0
+    queue = [(0, 0, 0)]
+
+    distance = 0
+    while queue not empty:
+        distance++
+        new_queue = []
+
+        for each state in queue:
+            for each move in 0..17:
+                new_state = apply_move(state, move)
+
+                if prune_table[new_state] == 255:  // Not visited
+                    prune_table[new_state] = distance
+                    new_queue.append(new_state)
+
+        queue = new_queue
+
+    return prune_table</pre>
+
+                <h3>Pruning Table Sizes</h3>
+                <table>
+                    <tr>
+                        <th>Table</th>
+                        <th>Dimensions</th>
+                        <th>Entries</th>
+                        <th>Storage</th>
+                    </tr>
+                    <tr>
+                        <td>Phase 1 (full)</td>
+                        <td>2187 × 2048 × 495</td>
+                        <td>2.2 billion</td>
+                        <td>~1.1 GB (4 bits each)</td>
+                    </tr>
+                    <tr>
+                        <td>Phase 1 (with symmetry)</td>
+                        <td>Reduced by ~16×</td>
+                        <td>~138 million</td>
+                        <td>~70 MB</td>
+                    </tr>
+                    <tr>
+                        <td>Phase 2</td>
+                        <td>Complex coordinates</td>
+                        <td>~43 billion</td>
+                        <td>~40 MB (with tricks)</td>
+                    </tr>
+                </table>
+
+                <div class="box success">
+                    <strong>The Power of Pruning:</strong><br>
+                    Without pruning: Search tree has ~18^20 ≈ 10^25 nodes<br>
+                    With pruning: Typically explore only millions of nodes<br>
+                    <strong>Speedup: ~10^19 times faster!</strong>
+                </div>
+            </section>
+
+            <!-- SECTION 10: AMBIGUITIES -->
+            <section id="ambiguous">
+                <h2><span class="emoji">❓</span> Clarifying Ambiguities</h2>
+
+                <h3>Q: Why are corner and edge encodings different?</h3>
+                <div class="box info">
+                    <strong>Corner:</strong> <code>ori × 8 + perm</code> (orientation in high bits)<br>
+                    <strong>Edge:</strong> <code>perm × 2 + ori</code> (orientation in low bit)<br><br>
+                    <strong>Reason:</strong> Optimization! Edge flipping is common, and <code>edge_flip(v) = v ^ 1</code> is a single XOR operation. Corners have 3 orientations (needs 2 bits), so they go in higher bits to leave room.
+                </div>
+
+                <h3>Q: Why 7 corners and 11 edges in coordinates?</h3>
+                <div class="box info">
+                    <strong>Physical constraint:</strong> The cube is a closed system.<br>
+                    • Corner orientations must sum to 0 (mod 3)<br>
+                    • Edge orientations must sum to 0 (mod 2)<br><br>
+                    So the last piece's orientation is DETERMINED by the others. Storing it would be redundant!
+                </div>
+
+                <h3>Q: What does "G1 subgroup" actually mean?</h3>
+                <div class="box info">
+                    <strong>Group Theory Definition:</strong> G1 is the subgroup of cube states reachable using only ⟨U, D, R2, L2, F2, B2⟩ moves.<br><br>
+                    <strong>Practical Definition:</strong> Any cube where:
+                    <ul>
+                        <li>All corners have orientation 0</li>
+                        <li>All edges have orientation 0</li>
+                        <li>Middle-layer edges are in the middle layer</li>
+                    </ul>
+                    From G1, you can reach solved using only the restricted move set.
+                </div>
+
+                <h3>Q: Why can't we use R or L in Phase 2?</h3>
+                <div class="box info">
+                    <strong>R and L quarter-turns:</strong>
+                    <ul>
+                        <li>Flip 4 edges (break edge orientation = 0)</li>
+                        <li>Twist 4 corners (break corner orientation = 0)</li>
+                    </ul>
+                    This would UNDO Phase 1's work! R2 and L2 are OK because 180° rotations preserve orientations.
+                </div>
+
+                <h3>Q: Why is the inverse symmetry needed in remap_into?</h3>
+                <div class="box info">
+                    <strong>The Problem:</strong> We want to transform cube state from one viewpoint to another.<br><br>
+                    <strong>The Process:</strong>
+                    <ol>
+                        <li><code>mprime = invm[m]</code>: "In the OLD frame, which piece will appear at position i in the NEW frame?"</li>
+                        <li><code>c[corner_perm(c1)]</code>: "What piece is actually there?"</li>
+                        <li><code>rot_corner[m][...]</code>: "How does this encoding look in the NEW frame?"</li>
+                    </ol>
+                    Think: inverse to LOCATE, forward to TRANSFORM.
+                </div>
+
+                <h3>Q: How does symmetry reduction save memory?</h3>
+                <div class="box info">
+                    <strong>Key Insight:</strong> Symmetric states have the same solving distance.<br><br>
+                    Instead of storing <code>prune[state]</code> for all states, we:
+                    <ol>
+                        <li>Find the CANONICAL representative of state's symmetry class</li>
+                        <li>Store <code>prune[canonical]</code> only once</li>
+                        <li>All 48 symmetric states share this one entry</li>
+                    </ol>
+                    Maximum savings: 48× (in practice, ~16× due to some states being self-symmetric)
+                </div>
+
+                <h3>Q: What's the relationship between coordinates and cubepos?</h3>
+                <div class="box info">
+                    <pre>
+cubepos (20 bytes)
+    │
+    ├──────────────────────────────────────┐
+    │                                      │
+    ▼                                      ▼
+CubeSymmetry (6 bytes)                permcube (9 bytes)
+    │                                      │
+    │ Tracks:                              │ Tracks:
+    │ • Corner orientations                │ • Edge positions (by layer)
+    │ • Edge orientations                  │ • Corner positions (by layer)
+    │ • Middle edge pattern                │ • Permutations within layers
+    │                                      │
+    │ Used in: PHASE 1                     │ Used in: PHASE 2
+    │                                      │
+    ▼                                      ▼
+csymm=0, eosymm=0, epsymm=0           All permutations solved
+(G1 state achieved)                    (CUBE SOLVED!)
+                    </pre>
+                </div>
+            </section>
+        </div>
+
+        <footer>
+            <p><strong>🧩 The Complete Kociemba Algorithm</strong></p>
+            <p>From 43 quintillion states to a solution in microseconds</p>
+            <p>The beauty of computer science: smart representation beats brute force.</p>
+        </footer>
+    </div>
+</body>
+</html>
